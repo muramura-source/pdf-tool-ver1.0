@@ -12,46 +12,51 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;700&display=swap');
+        
+        html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; }
         body { font-family: 'Inter', 'Noto Sans JP', sans-serif; background-color: #f8fafc; }
-        .tab-content { display: none; }
-        .tab-content.active { display: flex; flex-direction: column; height: 100%; }
+        
+        /* タブ切り替えのCSS（Tailwindのflexクラスと競合しないよう厳密に設定） */
+        .tab-content { display: none !important; height: 100%; width: 100%; }
+        .tab-content.active { display: block !important; }
+
+        .custom-scrollbar::-webkit-scrollbar { height: 8px; width: 8px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+
         .pdf-page-card { transition: all 0.2s; position: relative; flex-shrink: 0; width: 140px; aspect-ratio: 1 / 1.4; }
         .pdf-page-card img { width: 100%; height: 100%; object-fit: contain; background: #f1f5f9; border-radius: 4px; pointer-events: none; }
         .pdf-page-card.selected { outline: 4px solid #3b82f6; background-color: #eff6ff; }
+        
         .loader { border-top-color: #3b82f6; animation: spinner 0.6s linear infinite; }
         @keyframes spinner { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        
         .tab-btn.active { background-color: #2563eb !important; color: white !important; }
         
-        .split-preview-container {
-            display: flex;
-            align-items: center;
-            gap: 1.5rem;
-            padding: 2rem 40%;
-            overflow-x: auto;
-            scroll-behavior: smooth;
+        /* 閲覧タブ（PDFリーダー）用スタイル */
+        .textLayer {
+            position: absolute; left: 0; top: 0; right: 0; bottom: 0;
+            overflow: hidden; opacity: 0.2; line-height: 1.0; pointer-events: auto;
         }
-        .split-divider-line {
-            width: 4px;
-            height: 200px;
-            background: repeating-linear-gradient(to bottom, #ef4444, #ef4444 10px, transparent 10px, transparent 20px);
-            border-radius: 2px;
+        .textLayer > span {
+            color: transparent; position: absolute; white-space: pre;
+            cursor: text; transform-origin: 0% 0%;
+        }
+        .reader-page-container {
+            position: relative; box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            background: white; margin-bottom: 2.5rem; display: inline-block;
         }
 
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .custom-scrollbar::-webkit-scrollbar { height: 10px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 5px; }
-        
         #drop-overlay { 
-            display: none; 
-            pointer-events: none; 
-            background-color: rgba(37, 99, 235, 0.15);
-            backdrop-filter: blur(4px);
+            display: none; pointer-events: none; 
+            background-color: rgba(37, 99, 235, 0.15); backdrop-filter: blur(4px);
         }
         body.dragover #drop-overlay { display: flex; }
     </style>
 </head>
-<body class="min-h-screen flex flex-col overflow-hidden" id="drop-target">
+<body class="flex flex-col h-screen" id="drop-target">
 
     <div id="drop-overlay" class="fixed inset-0 z-[200] border-4 border-dashed border-blue-500 m-4 rounded-3xl flex items-center justify-center pointer-events-none">
         <div class="bg-white p-8 rounded-2xl shadow-2xl text-center">
@@ -60,140 +65,193 @@
         </div>
     </div>
 
-    <header class="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between sticky top-0 z-50">
+    <header class="bg-white border-b border-slate-200 px-6 py-3 flex items-center justify-between shrink-0 z-50">
         <div class="flex items-center gap-3">
-            <div class="bg-blue-600 p-2 rounded-lg text-white"><i data-lucide="file-digit" class="w-6 h-6"></i></div>
+            <div class="bg-blue-600 p-2 rounded-lg text-white"><i data-lucide="file-digit" class="w-5 h-5"></i></div>
             <div>
-                <h1 class="text-lg font-bold text-slate-800 leading-tight">セキュアPDFツール</h1>
-                <p class="text-[10px] text-slate-400 uppercase tracking-widest font-semibold">Privacy First • Local Processing</p>
+                <h1 class="text-md font-bold text-slate-800 leading-tight">セキュアPDFツール</h1>
+                <p class="text-[9px] text-slate-400 uppercase tracking-widest font-semibold">Privacy First • Local Processing</p>
             </div>
         </div>
-        <div class="text-xs text-slate-400 font-medium">※処理はすべてお使いのブラウザ内で行われます</div>
+        <div class="text-[11px] text-slate-400 font-medium bg-slate-50 px-3 py-1 rounded-full border border-slate-100">
+            データはブラウザ外に送信されません
+        </div>
     </header>
 
-    <main class="flex-1 flex flex-col p-4 md:p-6 gap-4 max-w-[1400px] mx-auto w-full overflow-hidden">
+    <main class="flex-1 flex flex-col p-4 gap-4 overflow-hidden relative">
         
-        <div class="flex overflow-x-auto no-scrollbar bg-white p-1 rounded-xl shadow-sm border border-slate-200 w-fit">
-            <button onclick="switchTab('merge')" class="tab-btn px-6 py-2 rounded-lg text-sm font-bold flex items-center gap-2 whitespace-nowrap text-slate-600 hover:bg-slate-50 transition" data-tab="merge"><i data-lucide="combine" class="w-4 h-4"></i>結合</button>
-            <button onclick="switchTab('split')" class="tab-btn px-6 py-2 rounded-lg text-sm font-bold flex items-center gap-2 whitespace-nowrap text-slate-600 hover:bg-slate-50 transition" data-tab="split"><i data-lucide="scissors" class="w-4 h-4"></i>分割</button>
-            <button onclick="switchTab('delete')" class="tab-btn px-6 py-2 rounded-lg text-sm font-bold flex items-center gap-2 whitespace-nowrap text-slate-600 hover:bg-slate-50 transition" data-tab="delete"><i data-lucide="trash-2" class="w-4 h-4"></i>削除</button>
-            <button onclick="switchTab('sort')" class="tab-btn px-6 py-2 rounded-lg text-sm font-bold flex items-center gap-2 whitespace-nowrap text-slate-600 hover:bg-slate-50 transition" data-tab="sort"><i data-lucide="arrow-up-down" class="w-4 h-4"></i>並び替え</button>
-            <button onclick="switchTab('edit')" class="tab-btn px-6 py-2 rounded-lg text-sm font-bold flex items-center gap-2 whitespace-nowrap text-slate-600 hover:bg-slate-50 transition" data-tab="edit"><i data-lucide="settings-2" class="w-4 h-4"></i>加工</button>
-            <button onclick="switchTab('ocr')" class="tab-btn px-6 py-2 rounded-lg text-sm font-bold flex items-center gap-2 whitespace-nowrap text-slate-600 hover:bg-slate-50 transition" data-tab="ocr"><i data-lucide="scan-text" class="w-4 h-4"></i>OCR</button>
+        <!-- タブナビゲーション -->
+        <div class="flex overflow-x-auto shrink-0 bg-white p-1 rounded-xl shadow-sm border border-slate-200 w-fit no-scrollbar">
+            <button onclick="switchTab('view')" class="tab-btn px-5 py-2 rounded-lg text-xs font-bold flex items-center gap-2 whitespace-nowrap text-slate-600 hover:bg-slate-50 transition" data-tab="view"><i data-lucide="book-open" class="w-4 h-4"></i>閲覧</button>
+            <button onclick="switchTab('merge')" class="tab-btn px-5 py-2 rounded-lg text-xs font-bold flex items-center gap-2 whitespace-nowrap text-slate-600 hover:bg-slate-50 transition" data-tab="merge"><i data-lucide="combine" class="w-4 h-4"></i>結合</button>
+            <button onclick="switchTab('split')" class="tab-btn px-5 py-2 rounded-lg text-xs font-bold flex items-center gap-2 whitespace-nowrap text-slate-600 hover:bg-slate-50 transition" data-tab="split"><i data-lucide="scissors" class="w-4 h-4"></i>分割</button>
+            <button onclick="switchTab('delete')" class="tab-btn px-5 py-2 rounded-lg text-xs font-bold flex items-center gap-2 whitespace-nowrap text-slate-600 hover:bg-slate-50 transition" data-tab="delete"><i data-lucide="trash-2" class="w-4 h-4"></i>削除</button>
+            <button onclick="switchTab('sort')" class="tab-btn px-5 py-2 rounded-lg text-xs font-bold flex items-center gap-2 whitespace-nowrap text-slate-600 hover:bg-slate-50 transition" data-tab="sort"><i data-lucide="arrow-up-down" class="w-4 h-4"></i>並び替え</button>
+            <button onclick="switchTab('edit')" class="tab-btn px-5 py-2 rounded-lg text-xs font-bold flex items-center gap-2 whitespace-nowrap text-slate-600 hover:bg-slate-50 transition" data-tab="edit"><i data-lucide="settings-2" class="w-4 h-4"></i>加工</button>
+            <button onclick="switchTab('ocr')" class="tab-btn px-5 py-2 rounded-lg text-xs font-bold flex items-center gap-2 whitespace-nowrap text-slate-600 hover:bg-slate-50 transition" data-tab="ocr"><i data-lucide="scan-text" class="w-4 h-4"></i>OCR</button>
         </div>
 
         <div class="flex-1 bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden relative">
             
-            <div id="empty-state" class="absolute inset-0 bg-white z-10 flex flex-col items-center justify-center p-8 text-center transition-opacity duration-300">
-                <div class="bg-blue-50 p-6 rounded-full text-blue-600 mb-6 shadow-inner"><i data-lucide="upload-cloud" class="w-12 h-12"></i></div>
-                <h3 class="text-2xl font-bold text-slate-800 mb-2">ファイルを読み込む</h3>
-                <p class="text-slate-500 mb-8 max-w-sm">上のタブを選択してから、PDFファイルをドラッグ＆ドロップしてください。</p>
-                <button onclick="triggerFileInput()" class="bg-blue-600 text-white px-10 py-4 rounded-2xl font-bold shadow-xl shadow-blue-200 hover:bg-blue-700 transition flex items-center gap-3">
-                    <i data-lucide="file-plus-2" class="w-6 h-6"></i> ファイルを選択
+            <div id="empty-state" class="absolute inset-0 bg-white z-[60] flex flex-col items-center justify-center p-8 text-center transition-opacity duration-300">
+                <div class="bg-blue-50 p-6 rounded-full text-blue-600 mb-6 shadow-inner"><i data-lucide="upload-cloud" class="w-10 h-10"></i></div>
+                <h3 class="text-xl font-bold text-slate-800 mb-2">ファイルを読み込む</h3>
+                <p class="text-slate-500 mb-8 max-w-sm text-sm">PDFファイルをドラッグ＆ドロップするか、下のボタンから選択してください。<br><span class="text-xs text-red-500">※タブを切り替えるとファイルはリセットされます</span></p>
+                <button onclick="triggerFileInput()" class="bg-blue-600 text-white px-8 py-3 rounded-xl font-bold shadow-xl shadow-blue-200 hover:bg-blue-700 transition flex items-center gap-3">
+                    <i data-lucide="file-plus-2" class="w-5 h-5"></i> ファイルを選択
                 </button>
                 <input type="file" id="main-file-input" class="hidden" accept="application/pdf" multiple>
             </div>
 
-            <!-- Merge -->
-            <div id="tab-merge" class="tab-content p-6">
-                <div class="flex justify-between items-center mb-6">
-                    <h2 class="text-xl font-bold">PDFの結合</h2>
-                    <button onclick="executeMerge()" class="bg-blue-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-blue-700 shadow-lg">結合して保存</button>
+            <!-- View (Reader) -->
+            <div id="tab-view" class="tab-content">
+                <div class="flex flex-col h-full overflow-hidden">
+                    <div class="bg-slate-50 border-b p-2 flex items-center justify-between shrink-0">
+                        <div class="flex items-center gap-4">
+                            <button onclick="toggleSidebar()" class="p-1.5 hover:bg-slate-200 text-slate-600 rounded transition" title="目次/しおりの表示切り替え"><i data-lucide="sidebar" class="w-4 h-4"></i></button>
+                            <div class="flex items-center bg-white border rounded-lg px-1">
+                                <button onclick="changeZoom(-0.2)" class="p-1.5 hover:bg-slate-50 text-slate-600"><i data-lucide="zoom-out" class="w-4 h-4"></i></button>
+                                <span id="zoom-percent" class="text-[10px] font-bold w-12 text-center">100%</span>
+                                <button onclick="changeZoom(0.2)" class="p-1.5 hover:bg-slate-50 text-slate-600"><i data-lucide="zoom-in" class="w-4 h-4"></i></button>
+                            </div>
+                        </div>
+                        <div id="reader-title" class="text-xs font-bold text-slate-600 truncate max-w-xs px-4"></div>
+                        <div class="text-[10px] text-slate-400 bg-white px-2 py-1 rounded border">テキスト選択可</div>
+                    </div>
+                    <div class="flex-1 flex overflow-hidden">
+                        <!-- しおりサイドバー -->
+                        <div id="reader-sidebar" class="w-64 border-r bg-slate-50 flex flex-col shrink-0 hidden">
+                            <div class="p-3 text-[10px] font-bold text-slate-500 uppercase border-b bg-white flex items-center justify-between">
+                                <span>目次 / しおり</span>
+                                <button onclick="toggleSidebar()" class="text-slate-400 hover:text-slate-600"><i data-lucide="x" class="w-3 h-3"></i></button>
+                            </div>
+                            <div id="reader-outline" class="flex-1 overflow-y-auto p-2 space-y-1 custom-scrollbar"></div>
+                        </div>
+                        <div id="reader-viewport" class="flex-1 overflow-auto bg-slate-200 p-8 flex flex-col items-center custom-scrollbar"></div>
+                    </div>
                 </div>
-                <div id="merge-list" class="flex-1 overflow-y-auto space-y-3 pr-2 border-t pt-4"></div>
+            </div>
+
+            <!-- Merge -->
+            <div id="tab-merge" class="tab-content">
+                <div class="flex flex-col h-full p-6 overflow-hidden">
+                    <div class="flex justify-between items-center mb-6 shrink-0">
+                        <h2 class="text-lg font-bold">PDFの結合</h2>
+                        <button onclick="executeMerge()" class="bg-blue-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-blue-700 shadow-lg">結合して保存</button>
+                    </div>
+                    <div id="merge-list" class="flex-1 overflow-y-auto space-y-3 pr-2 custom-scrollbar"></div>
+                </div>
             </div>
 
             <!-- Split -->
-            <div id="tab-split" class="tab-content p-6">
-                <div class="flex justify-between items-center mb-6">
-                    <h2 class="text-xl font-bold">PDFの分割</h2>
-                    <button onclick="executeSplitTwo()" class="px-6 py-2 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 transition">ここで分割して保存</button>
-                </div>
-                <div class="flex-1 flex flex-col gap-4 overflow-hidden">
-                    <div class="bg-slate-50 p-6 rounded-2xl border border-slate-100 space-y-4">
-                        <div class="flex justify-between text-sm font-bold text-blue-700">
-                            <span>前半: 1 〜 <span id="split-val">1</span> ページ</span>
-                            <span>後半: <span id="split-val-next">2</span> 〜 <span id="split-max">?</span> ページ</span>
+            <div id="tab-split" class="tab-content">
+                <div class="flex flex-col h-full p-6 overflow-hidden">
+                    <div class="flex justify-between items-center mb-6 shrink-0">
+                        <h2 class="text-lg font-bold">PDFの分割</h2>
+                        <div class="flex gap-2">
+                            <button onclick="executeSplitAll()" class="px-4 py-2 border border-slate-200 text-slate-600 rounded-lg text-sm font-bold hover:bg-slate-50 transition">全ページ個別保存</button>
+                            <button onclick="executeSplitTwo()" class="px-5 py-2 bg-blue-600 text-white rounded-lg text-sm font-bold hover:bg-blue-700 shadow-lg shadow-blue-100">指定位置で分割保存</button>
                         </div>
-                        <input type="range" id="split-slider" min="1" max="1" value="1" class="w-full h-3 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600">
                     </div>
-                    <div id="grid-split-preview" class="flex-1 overflow-x-auto custom-scrollbar split-preview-container bg-slate-100 rounded-xl border border-slate-200"></div>
+                    <div class="flex-1 flex flex-col gap-4 overflow-hidden">
+                        <div class="bg-slate-50 p-5 rounded-2xl border border-slate-100 shrink-0">
+                            <div class="flex justify-between text-xs font-bold text-blue-700 mb-3">
+                                <span>前半: 1 〜 <span id="split-val">1</span> ページ</span>
+                                <span>後半: <span id="split-val-next">2</span> 〜 <span id="split-max">?</span> ページ</span>
+                            </div>
+                            <input type="range" id="split-slider" min="1" max="1" value="1" class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600">
+                        </div>
+                        <div id="grid-split-preview" class="flex-1 overflow-x-auto overflow-y-hidden flex items-center gap-6 p-8 bg-slate-100 rounded-xl border border-slate-200 custom-scrollbar"></div>
+                    </div>
                 </div>
             </div>
 
             <!-- Delete -->
-            <div id="tab-delete" class="tab-content p-6">
-                <div class="flex justify-between items-center mb-6">
-                    <h2 class="text-xl font-bold">ページの削除</h2>
-                    <button onclick="deleteSelected()" class="bg-red-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-red-700 transition">選択したページを除去</button>
+            <div id="tab-delete" class="tab-content">
+                <div class="flex flex-col h-full p-6 overflow-hidden">
+                    <div class="flex justify-between items-center mb-6 shrink-0">
+                        <h2 class="text-lg font-bold">ページの削除</h2>
+                        <button onclick="deleteSelected()" class="bg-red-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-red-700 shadow-lg">選択したページを除去して保存</button>
+                    </div>
+                    <div id="grid-delete" class="flex-1 grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-6 overflow-y-auto pr-2 custom-scrollbar"></div>
                 </div>
-                <div id="grid-delete" class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-6 overflow-y-auto pr-2"></div>
             </div>
 
             <!-- Sort -->
-            <div id="tab-sort" class="tab-content p-6">
-                <div class="flex justify-between items-center mb-6">
-                    <h2 class="text-xl font-bold">並び替え</h2>
-                    <button onclick="saveSortedPdf()" class="bg-blue-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-blue-700 transition">現在の順序で保存</button>
+            <div id="tab-sort" class="tab-content">
+                <div class="flex flex-col h-full p-6 overflow-hidden">
+                    <div class="flex justify-between items-center mb-6 shrink-0">
+                        <h2 class="text-lg font-bold">並び替え</h2>
+                        <button onclick="saveSortedPdf()" class="bg-blue-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-blue-700 shadow-lg">現在の順序で保存</button>
+                    </div>
+                    <div id="grid-sort" class="flex-1 grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-6 overflow-y-auto pr-2 custom-scrollbar"></div>
                 </div>
-                <div id="grid-sort" class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-6 overflow-y-auto pr-2"></div>
             </div>
 
             <!-- Edit (Processing) -->
-            <div id="tab-edit" class="tab-content p-6 overflow-y-auto">
-                <h2 class="text-xl font-bold mb-6">PDFの加工</h2>
-                <div class="grid md:grid-cols-2 gap-8 items-start">
-                    <div class="p-6 border border-slate-200 rounded-2xl bg-slate-50/50 space-y-4">
-                        <h3 class="font-bold flex items-center gap-2 text-blue-600"><i data-lucide="hash" class="w-5 h-5"></i> ページ番号付与</h3>
-                        <div class="grid grid-cols-2 gap-4 text-xs font-bold">
-                            <div class="space-y-1">
-                                <label>位置</label>
-                                <select id="pg-pos" class="w-full border p-2 rounded-lg bg-white">
-                                    <option value="bottom-center">下部中央</option>
-                                    <option value="bottom-right">下部右</option>
-                                    <option value="top-center">上部中央</option>
-                                </select>
+            <div id="tab-edit" class="tab-content">
+                <div class="flex flex-col h-full p-6 overflow-y-auto custom-scrollbar">
+                    <h2 class="text-lg font-bold mb-6">PDFの加工</h2>
+                    <div class="grid md:grid-cols-2 gap-8 items-start pb-10">
+                        <!-- ページ番号 -->
+                        <div class="p-6 border border-slate-200 rounded-2xl bg-slate-50/50 space-y-4">
+                            <h3 class="font-bold flex items-center gap-2 text-blue-600"><i data-lucide="hash" class="w-4 h-4"></i> ページ番号付与</h3>
+                            <div class="grid grid-cols-2 gap-4 text-[11px] font-bold text-slate-600">
+                                <div class="space-y-1">
+                                    <label>位置</label>
+                                    <select id="pg-pos" class="w-full border p-2 rounded-lg bg-white">
+                                        <option value="bottom-center">下部中央</option>
+                                        <option value="bottom-right">下部右</option>
+                                        <option value="top-center">上部中央</option>
+                                    </select>
+                                </div>
+                                <div class="space-y-1">
+                                    <label>サイズ</label>
+                                    <input type="number" id="pg-size" value="12" class="w-full border p-2 rounded-lg bg-white">
+                                </div>
                             </div>
-                            <div class="space-y-1">
-                                <label>サイズ</label>
-                                <input type="number" id="pg-size" value="12" class="w-full border p-2 rounded-lg bg-white">
-                            </div>
+                            <button onclick="applyPageNumbers()" class="w-full bg-blue-600 text-white py-3 rounded-xl font-bold hover:bg-blue-700 transition">番号を付与して保存</button>
                         </div>
-                        <button onclick="applyPageNumbers()" class="w-full bg-blue-600 text-white py-3 rounded-xl font-bold hover:bg-blue-700 transition">番号を付与して保存</button>
-                    </div>
-
-                    <div class="p-6 border border-slate-200 rounded-2xl bg-slate-50/50 space-y-4">
-                        <h3 class="font-bold flex items-center gap-2 text-green-600"><i data-lucide="list" class="w-5 h-5"></i> しおり（目次）作成</h3>
-                        <p class="text-xs text-slate-500 mb-2">ページ番号に対応するタイトルを入力してインデックスを生成します。</p>
-                        <div id="bookmark-inputs" class="space-y-2 max-h-48 overflow-y-auto p-2 bg-white rounded-lg border">
-                            <div class="flex gap-2 bookmark-row">
-                                <input type="number" placeholder="頁" class="w-16 border rounded p-1 text-sm bm-page" value="1">
-                                <input type="text" placeholder="タイトル" class="flex-1 border rounded p-1 text-sm bm-title">
+                        
+                        <!-- しおり（アウトライン） -->
+                        <div class="p-6 border border-slate-200 rounded-2xl bg-slate-50/50 space-y-4">
+                            <h3 class="font-bold flex items-center gap-2 text-green-600"><i data-lucide="list" class="w-4 h-4"></i> しおり作成</h3>
+                            <p class="text-xs text-slate-500">任意のページに目次となるアウトラインを埋め込みます。</p>
+                            <div id="bookmark-inputs" class="space-y-2 max-h-48 overflow-y-auto p-2 bg-white rounded-lg border custom-scrollbar">
+                                <div class="flex gap-2 bookmark-row">
+                                    <input type="number" placeholder="頁" class="w-16 border rounded p-1 text-xs bm-page" value="1" min="1">
+                                    <input type="text" placeholder="タイトル (例: 1章)" class="flex-1 border rounded p-1 text-xs bm-title">
+                                </div>
                             </div>
+                            <button onclick="addBookmarkRow()" class="text-xs text-blue-600 font-bold flex items-center gap-1 hover:underline">
+                                <i data-lucide="plus" class="w-3 h-3"></i> 行を追加
+                            </button>
+                            <button onclick="applyBookmarks()" class="w-full bg-green-600 text-white py-3 rounded-xl font-bold hover:bg-green-700 transition shadow-md shadow-green-100">しおりを埋め込んで保存</button>
                         </div>
-                        <button onclick="addBookmarkRow()" class="text-xs text-blue-600 font-bold flex items-center gap-1 hover:underline">
-                            <i data-lucide="plus" class="w-3 h-3"></i> 行を追加
-                        </button>
-                        <button onclick="applyBookmarks()" class="w-full bg-green-600 text-white py-3 rounded-xl font-bold hover:bg-green-700 transition">しおりを付与して保存</button>
                     </div>
                 </div>
             </div>
 
             <!-- OCR -->
-            <div id="tab-ocr" class="tab-content p-6 overflow-hidden">
-                <div class="flex justify-between items-center mb-6">
-                    <h2 class="text-xl font-bold">文字認識 (OCR)</h2>
-                    <button onclick="executeOCR()" id="btn-ocr-start" class="bg-blue-600 text-white px-6 py-2 rounded-lg font-bold flex items-center gap-2 hover:bg-blue-700 transition">
-                        <i data-lucide="scan" class="w-4 h-4"></i> 解析開始
-                    </button>
-                </div>
-                <div class="flex-1 grid md:grid-cols-3 gap-6 overflow-hidden">
-                    <div id="grid-ocr-pick" class="md:col-span-1 grid grid-cols-2 gap-3 overflow-y-auto p-3 bg-slate-50 rounded-2xl border border-slate-100"></div>
-                    <div class="md:col-span-2 border border-slate-200 rounded-2xl flex flex-col bg-white overflow-hidden relative">
-                        <textarea id="ocr-out" class="flex-1 p-6 text-sm leading-relaxed focus:outline-none resize-none font-mono" placeholder="認識結果がここに表示されます..."></textarea>
-                        <div id="ocr-loader" class="hidden absolute inset-0 bg-white/90 backdrop-blur-sm flex flex-col items-center justify-center">
-                            <div class="loader w-12 h-12 border-4 border-slate-200 rounded-full mb-4"></div>
-                            <p id="ocr-stat" class="text-lg font-bold text-slate-700">解析中...</p>
+            <div id="tab-ocr" class="tab-content">
+                <div class="flex flex-col h-full p-6 overflow-hidden">
+                    <div class="flex justify-between items-center mb-4 shrink-0">
+                        <h2 class="text-lg font-bold">文字認識 (OCR)</h2>
+                        <button onclick="executeOCR()" id="btn-ocr-start" class="bg-blue-600 text-white px-5 py-2 rounded-lg font-bold flex items-center gap-2 hover:bg-blue-700 transition">
+                            <i data-lucide="scan" class="w-4 h-4"></i> 解析開始
+                        </button>
+                    </div>
+                    <div class="flex-1 flex gap-4 overflow-hidden h-full">
+                        <div class="w-64 flex flex-col shrink-0 border border-slate-100 rounded-2xl bg-slate-50 overflow-hidden h-full">
+                            <div class="p-3 border-b bg-white text-[10px] font-bold text-slate-500 uppercase">ページを選択</div>
+                            <div id="grid-ocr-pick" class="flex-1 overflow-y-auto p-3 grid grid-cols-1 gap-3 custom-scrollbar"></div>
+                        </div>
+                        <div class="flex-1 border border-slate-200 rounded-2xl flex flex-col bg-white overflow-hidden relative h-full">
+                            <textarea id="ocr-out" class="flex-1 p-6 text-sm leading-relaxed focus:outline-none resize-none font-mono custom-scrollbar" placeholder="認識結果がここに表示されます..."></textarea>
+                            <div id="ocr-loader" class="hidden absolute inset-0 bg-white/90 backdrop-blur-sm flex flex-col items-center justify-center">
+                                <div class="loader w-10 h-10 border-4 border-slate-200 rounded-full mb-4"></div>
+                                <p id="ocr-stat" class="text-sm font-bold text-slate-700">解析中...</p>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -204,8 +262,8 @@
 
     <div id="global-overlay" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[300] flex items-center justify-center">
         <div class="bg-white px-10 py-8 rounded-3xl flex flex-col items-center gap-4 shadow-2xl">
-            <div class="loader w-12 h-12 border-4 border-slate-100 rounded-full"></div>
-            <p id="overlay-msg" class="font-bold text-slate-800 text-lg">処理中...</p>
+            <div class="loader w-10 h-10 border-4 border-slate-100 rounded-full"></div>
+            <p id="overlay-msg" class="font-bold text-slate-800">処理中...</p>
         </div>
     </div>
 
@@ -217,24 +275,28 @@
             mainBytes: null,
             pages: [],
             mergeQueue: [],
-            currentTab: 'merge',
-            dragCounter: 0
+            currentTab: 'view',
+            dragCounter: 0,
+            zoom: 1.0,
+            readerPdf: null
         };
 
         document.addEventListener('DOMContentLoaded', () => {
             lucide.createIcons();
-            switchTab('merge');
+            switchTab('view');
             
             const input = document.getElementById('main-file-input');
             input.onchange = (e) => handleFileSelection(e.target.files);
 
             const slider = document.getElementById('split-slider');
-            slider.oninput = (e) => {
-                const val = parseInt(e.target.value);
-                document.getElementById('split-val').textContent = val;
-                document.getElementById('split-val-next').textContent = val + 1;
-                renderSplitPreview(val);
-            };
+            if (slider) {
+                slider.oninput = (e) => {
+                    const val = parseInt(e.target.value);
+                    document.getElementById('split-val').textContent = val;
+                    document.getElementById('split-val-next').textContent = val + 1;
+                    renderSplitPreview(val);
+                };
+            }
 
             window.addEventListener('dragenter', e => { e.preventDefault(); if (e.dataTransfer.types.includes('Files')) { state.dragCounter++; document.body.classList.add('dragover'); } });
             window.addEventListener('dragleave', e => { e.preventDefault(); if (e.dataTransfer.types.includes('Files')) { state.dragCounter--; if (state.dragCounter <= 0) { document.body.classList.remove('dragover'); state.dragCounter = 0; } } });
@@ -242,35 +304,54 @@
             window.addEventListener('drop', e => { e.preventDefault(); document.body.classList.remove('dragover'); state.dragCounter = 0; if (e.dataTransfer.files.length) handleFileSelection(e.dataTransfer.files); });
         });
 
-        function resetAllState() {
+        // タブ切り替え時の完全リセット
+        function switchTab(tabId) {
+            state.currentTab = tabId;
+            
+            // 状態の初期化
             state.mainPdf = null;
             state.mainBytes = null;
             state.pages = [];
             state.mergeQueue = [];
-            document.getElementById('ocr-out').value = '';
+            state.readerPdf = null;
+            state.zoom = 1.0;
+            
+            // UIの初期化
+            if(document.getElementById('ocr-out')) document.getElementById('ocr-out').value = '';
             document.getElementById('main-file-input').value = '';
-            // しおり入力をリセット
-            const container = document.getElementById('bookmark-inputs');
-            if (container) {
-                container.innerHTML = `<div class="flex gap-2 bookmark-row"><input type="number" placeholder="頁" class="w-16 border rounded p-1 text-sm bm-page" value="1"><input type="text" placeholder="タイトル" class="flex-1 border rounded p-1 text-sm bm-title"></div>`;
+            if(document.getElementById('reader-viewport')) document.getElementById('reader-viewport').innerHTML = '';
+            if(document.getElementById('reader-outline')) document.getElementById('reader-outline').innerHTML = '';
+            if(document.getElementById('reader-title')) document.getElementById('reader-title').textContent = '';
+            
+            // しおり入力フォームのリセット
+            const bmContainer = document.getElementById('bookmark-inputs');
+            if (bmContainer) {
+                bmContainer.innerHTML = `<div class="flex gap-2 bookmark-row"><input type="number" placeholder="頁" class="w-16 border rounded p-1 text-xs bm-page" value="1" min="1"><input type="text" placeholder="タイトル" class="flex-1 border rounded p-1 text-xs bm-title"></div>`;
             }
-            checkState();
-        }
 
-        function switchTab(tabId) {
-            state.currentTab = tabId;
-            resetAllState();
+            // タブの表示切り替え
             document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-            document.getElementById(`tab-${tabId}`).classList.add('active');
-            document.querySelector(`[data-tab="${tabId}"]`).classList.add('active');
+            const targetTab = document.getElementById(`tab-${tabId}`);
+            if (targetTab) targetTab.classList.add('active');
+            const targetBtn = document.querySelector(`[data-tab="${tabId}"]`);
+            if (targetBtn) targetBtn.classList.add('active');
+            
+            checkState();
+            lucide.createIcons();
         }
 
         function triggerFileInput() { document.getElementById('main-file-input').click(); }
 
         function checkState() {
             const hasData = (state.mergeQueue.length > 0) || (state.mainBytes !== null);
-            document.getElementById('empty-state').classList.toggle('hidden', hasData);
+            const emptyState = document.getElementById('empty-state');
+            if (emptyState) emptyState.classList.toggle('hidden', hasData);
+        }
+
+        function toggleSidebar() {
+            const sidebar = document.getElementById('reader-sidebar');
+            if (sidebar) sidebar.classList.toggle('hidden');
         }
 
         async function handleFileSelection(files) {
@@ -287,21 +368,136 @@
                 } else {
                     const f = files[0];
                     if (f.type !== 'application/pdf') throw new Error("PDFファイルを選択してください");
+                    
+                    const titleEl = document.getElementById('reader-title');
+                    if (titleEl) titleEl.textContent = f.name;
+                    
                     state.mainBytes = await f.arrayBuffer();
                     state.mainPdf = await PDFLib.PDFDocument.load(state.mainBytes.slice(0));
-                    await generateThumbnails();
-                    setupControlsForTab();
-                    renderGrids();
+                    
+                    if (state.currentTab === 'view') {
+                        const loadingTask = pdfjsLib.getDocument({ data: state.mainBytes.slice(0) });
+                        state.readerPdf = await loadingTask.promise;
+                        await renderReader();
+                        await renderOutline();
+                    } else {
+                        await generateThumbnails();
+                        setupControlsForTab();
+                        renderGrids();
+                    }
                 }
                 checkState();
             } catch (err) {
-                alert(err.message);
+                console.error(err);
+                alert("読み込みエラー: " + err.message);
             } finally {
                 hideOverlay();
             }
         }
 
+        // --- View (Reader) Functions ---
+
+        async function renderReader() {
+            if (!state.readerPdf) return;
+            const container = document.getElementById('reader-viewport');
+            if (!container) return;
+            container.innerHTML = '';
+            
+            const zoomLabel = document.getElementById('zoom-percent');
+            if (zoomLabel) zoomLabel.textContent = `${Math.round(state.zoom * 100)}%`;
+
+            const numPages = state.readerPdf.numPages;
+            for (let i = 1; i <= numPages; i++) {
+                try {
+                    const page = await state.readerPdf.getPage(i);
+                    const viewport = page.getViewport({ scale: state.zoom });
+                    
+                    const pageDiv = document.createElement('div');
+                    pageDiv.className = 'reader-page-container';
+                    pageDiv.id = `reader-page-${i}`;
+                    pageDiv.style.width = `${viewport.width}px`;
+                    pageDiv.style.height = `${viewport.height}px`;
+
+                    const canvas = document.createElement('canvas');
+                    canvas.width = viewport.width;
+                    canvas.height = viewport.height;
+                    pageDiv.appendChild(canvas);
+
+                    const textLayerDiv = document.createElement('div');
+                    textLayerDiv.className = 'textLayer';
+                    // エラー回避のため textLayerDiv にも設定
+                    textLayerDiv.style.setProperty('--scale-factor', state.zoom);
+                    pageDiv.appendChild(textLayerDiv);
+                    
+                    container.appendChild(pageDiv);
+
+                    const context = canvas.getContext('2d');
+                    await page.render({ canvasContext: context, viewport }).promise;
+
+                    const textContent = await page.getTextContent();
+                    await pdfjsLib.renderTextLayer({
+                        textContent: textContent,
+                        container: textLayerDiv,
+                        viewport: viewport,
+                        textDivs: []
+                    }).promise;
+                } catch (e) {
+                    console.error(`Page ${i} render error:`, e);
+                }
+            }
+        }
+
+        async function renderOutline() {
+            if (!state.readerPdf) return;
+            const list = document.getElementById('reader-outline');
+            if (!list) return;
+            list.innerHTML = '';
+            
+            try {
+                const outline = await state.readerPdf.getOutline();
+                
+                if (outline && outline.length > 0) {
+                    const processItems = async (items, depth = 0) => {
+                        for (const item of items) {
+                            const btn = document.createElement('button');
+                            btn.className = `w-full text-left p-2 text-[11px] font-medium hover:bg-white rounded transition truncate text-slate-600 flex items-center gap-2`;
+                            btn.style.paddingLeft = `${depth * 12 + 8}px`;
+                            btn.innerHTML = `<i data-lucide="chevron-right" class="w-3 h-3 shrink-0"></i> <span class="truncate">${item.title}</span>`;
+                            btn.onclick = async () => {
+                                let dest = item.dest;
+                                if (typeof dest === 'string') dest = await state.readerPdf.getDestination(dest);
+                                if (dest && dest[0]) {
+                                    const pageIndex = await state.readerPdf.getPageIndex(dest[0]);
+                                    const targetPage = document.getElementById(`reader-page-${pageIndex + 1}`);
+                                    if (targetPage) targetPage.scrollIntoView({ behavior: 'smooth' });
+                                }
+                            };
+                            list.appendChild(btn);
+                            if (item.items && item.items.length > 0) {
+                                await processItems(item.items, depth + 1);
+                            }
+                        }
+                    };
+                    await processItems(outline);
+                } else {
+                    list.innerHTML = '<div class="p-3 text-xs text-slate-400 font-medium">しおりがありません</div>';
+                }
+                lucide.createIcons();
+            } catch (e) {
+                console.error("Outline error:", e);
+                list.innerHTML = '<div class="p-3 text-xs text-slate-400 font-medium">しおりがありません</div>';
+            }
+        }
+
+        function changeZoom(delta) {
+            state.zoom = Math.max(0.4, Math.min(3.0, state.zoom + delta));
+            renderReader();
+        }
+
+        // --- Common Processing Functions ---
+
         async function generateThumbnails() {
+            if (!state.mainBytes) return;
             const loading = pdfjsLib.getDocument({ data: state.mainBytes.slice(0) });
             const pdf = await loading.promise;
             state.pages = [];
@@ -317,54 +513,88 @@
             }
         }
 
-        function setupControlsForTab() {
-            if (!state.mainPdf || state.currentTab !== 'split') return;
-            const pc = state.mainPdf.getPageCount();
-            const slider = document.getElementById('split-slider');
-            slider.max = Math.max(1, pc - 1);
-            slider.value = Math.floor(pc / 2) || 1;
-            document.getElementById('split-max').textContent = pc;
-            document.getElementById('split-val').textContent = slider.value;
-            document.getElementById('split-val-next').textContent = parseInt(slider.value) + 1;
-            renderSplitPreview(parseInt(slider.value));
-        }
-
         function renderGrids() {
-            const targets = ['grid-delete', 'grid-sort', 'grid-ocr-pick'];
-            targets.forEach(tid => {
-                const el = document.getElementById(tid);
+            const targets = [
+                {id: 'grid-delete', tab: 'delete'},
+                {id: 'grid-sort', tab: 'sort'},
+                {id: 'grid-ocr-pick', tab: 'ocr'}
+            ];
+
+            targets.forEach(target => {
+                const el = document.getElementById(target.id);
                 if (!el) return;
                 el.innerHTML = '';
+                
                 state.pages.forEach((p, idx) => {
                     const div = document.createElement('div');
-                    div.className = `pdf-page-card border border-slate-200 rounded-lg p-1.5 cursor-pointer hover:shadow-md bg-white ${p.selected ? 'selected' : ''}`;
-                    div.innerHTML = `<div class="w-full h-full overflow-hidden rounded bg-slate-50 flex items-center justify-center"><img src="${p.canvasUrl}"></div><p class="absolute bottom-1 right-1 bg-slate-800/80 text-white text-[9px] px-1.5 rounded font-bold">P.${idx+1}</p>`;
-                    div.onclick = () => { if(tid !== 'grid-sort') { p.selected = !p.selected; renderGrids(); } };
+                    let classes = `pdf-page-card border border-slate-200 rounded-lg p-1.5 cursor-pointer hover:shadow-md bg-white ${p.selected ? 'selected' : ''}`;
+                    if (target.id === 'grid-ocr-pick') {
+                        classes = `pdf-page-card border border-slate-200 rounded-lg p-1.5 cursor-pointer hover:shadow-md bg-white w-full ${p.selected ? 'selected' : ''}`;
+                    }
+                    div.className = classes;
+                    
+                    div.innerHTML = `
+                        <div class="w-full h-full overflow-hidden rounded bg-slate-50 flex items-center justify-center">
+                            <img src="${p.canvasUrl}" class="max-h-full">
+                        </div>
+                        <p class="absolute bottom-1 right-1 bg-slate-800/80 text-white text-[9px] px-1.5 rounded font-bold">P.${idx+1}</p>
+                    `;
+                    
+                    if (target.tab !== 'sort') {
+                        div.onclick = () => {
+                            p.selected = !p.selected;
+                            renderGrids();
+                        };
+                    }
                     el.appendChild(div);
                 });
             });
-            if (state.currentTab === 'sort') new Sortable(document.getElementById('grid-sort'), { animation: 250 });
+
+            if (state.currentTab === 'sort') {
+                const sortGrid = document.getElementById('grid-sort');
+                if (sortGrid && !sortGrid.sortableInstance) {
+                    sortGrid.sortableInstance = new Sortable(sortGrid, { animation: 250 });
+                }
+            }
         }
 
+        // --- Split ---
         function renderSplitPreview(splitIndex) {
             const el = document.getElementById('grid-split-preview');
             if (!el || state.pages.length === 0) return;
             el.innerHTML = '';
             state.pages.forEach((p, idx) => {
                 const div = document.createElement('div');
-                div.className = "pdf-page-card border border-slate-200 p-1 bg-white transition-all " + 
-                                (idx+1 === splitIndex || idx === splitIndex ? 'ring-4 ring-blue-500/20 border-blue-500 scale-105' : 'opacity-40 scale-90');
+                div.className = "pdf-page-card border border-slate-200 p-1 bg-white transition-all flex flex-col shrink-0 " + 
+                                (idx+1 === splitIndex || idx === splitIndex ? 'ring-4 ring-blue-500/20 border-blue-500 scale-105' : 'opacity-50 scale-95');
                 div.innerHTML = `<img src="${p.canvasUrl}"><p class="text-[10px] text-center mt-2 font-bold">P.${idx+1}</p>`;
                 el.appendChild(div);
                 if (idx + 1 === splitIndex) {
                     const divi = document.createElement('div');
-                    divi.className = "flex-shrink-0 flex flex-col items-center justify-center px-4";
-                    divi.innerHTML = `<div class="bg-red-500 text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg shadow-red-100">切断</div><div class="w-1 h-32 bg-red-400 opacity-50 mt-2"></div>`;
+                    divi.className = "flex-shrink-0 flex flex-col items-center justify-center px-4 h-full";
+                    divi.innerHTML = `<div class="bg-red-500 text-white px-3 py-1.5 rounded-full text-[10px] font-bold shadow-lg">切断</div><div class="w-1 flex-1 bg-red-400 opacity-50 mt-2 rounded"></div>`;
                     el.appendChild(divi);
                 }
             });
         }
 
+        function setupControlsForTab() {
+            if (!state.mainPdf || state.currentTab !== 'split') return;
+            const pc = state.mainPdf.getPageCount();
+            const slider = document.getElementById('split-slider');
+            if (slider) {
+                slider.max = Math.max(1, pc - 1);
+                slider.value = Math.floor(pc / 2) || 1;
+                document.getElementById('split-max').textContent = pc;
+                document.getElementById('split-val').textContent = slider.value;
+                document.getElementById('split-val-next').textContent = parseInt(slider.value) + 1;
+                renderSplitPreview(parseInt(slider.value));
+            }
+            // しおりの最大ページ数を更新
+            document.querySelectorAll('.bm-page').forEach(input => input.max = pc);
+        }
+
+        // --- Merge ---
         function renderMergeList() {
             const list = document.getElementById('merge-list');
             if (!list) return;
@@ -373,7 +603,7 @@
                 const div = document.createElement('div');
                 div.className = "flex items-center gap-4 bg-white border border-slate-200 p-3 rounded-xl shadow-sm group cursor-grab";
                 div.innerHTML = `<i data-lucide="grip-vertical" class="w-5 h-5 text-slate-300"></i><span class="flex-1 text-sm font-bold truncate text-slate-700">${item.name}</span>
-                                 <button onclick="removeFromMerge('${item.id}')" class="text-slate-300 hover:text-red-500"><i data-lucide="x" class="w-5 h-5"></i></button>`;
+                                 <button onclick="removeFromMerge('${item.id}')" class="text-slate-300 hover:text-red-500 transition"><i data-lucide="x" class="w-5 h-5"></i></button>`;
                 list.appendChild(div);
             });
             lucide.createIcons();
@@ -382,97 +612,163 @@
 
         function removeFromMerge(id) { state.mergeQueue = state.mergeQueue.filter(i => i.id !== id); renderMergeList(); checkState(); }
 
+        // --- Execution Functions ---
         async function executeMerge() {
             if (state.mergeQueue.length < 2) return alert("2つ以上のファイルが必要です");
             showOverlay("結合中...");
-            const out = await PDFLib.PDFDocument.create();
-            for (const item of state.mergeQueue) {
-                const src = await PDFLib.PDFDocument.load(item.bytes.slice(0));
-                const cp = await out.copyPages(src, src.getPageIndices());
-                cp.forEach(p => out.addPage(p));
-            }
-            download(await out.save(), "merged.pdf");
-            hideOverlay();
+            try {
+                const out = await PDFLib.PDFDocument.create();
+                for (const item of state.mergeQueue) {
+                    const src = await PDFLib.PDFDocument.load(item.bytes.slice(0));
+                    const cp = await out.copyPages(src, src.getPageIndices());
+                    cp.forEach(p => out.addPage(p));
+                }
+                download(await out.save(), "merged.pdf");
+            } catch (e) { alert("結合エラー: " + e.message); } finally { hideOverlay(); }
         }
 
         async function executeSplitTwo() {
             if (!state.mainPdf) return;
             const val = parseInt(document.getElementById('split-slider').value);
             showOverlay("分割中...");
-            const out1 = await PDFLib.PDFDocument.create();
-            const cp1 = await out1.copyPages(state.mainPdf, Array.from({length: val}, (_,i)=>i));
-            cp1.forEach(p => out1.addPage(p));
-            download(await out1.save(), "part1.pdf");
-            const out2 = await PDFLib.PDFDocument.create();
-            const cp2 = await out2.copyPages(state.mainPdf, Array.from({length: state.pages.length - val}, (_,i)=>i+val));
-            cp2.forEach(p => out2.addPage(p));
-            download(await out2.save(), "part2.pdf");
-            hideOverlay();
+            try {
+                const out1 = await PDFLib.PDFDocument.create();
+                const cp1 = await out1.copyPages(state.mainPdf, Array.from({length: val}, (_,i)=>i));
+                cp1.forEach(p => out1.addPage(p));
+                download(await out1.save(), "part1.pdf");
+                const out2 = await PDFLib.PDFDocument.create();
+                const cp2 = await out2.copyPages(state.mainPdf, Array.from({length: state.pages.length - val}, (_,i)=>i+val));
+                cp2.forEach(p => out2.addPage(p));
+                download(await out2.save(), "part2.pdf");
+            } catch (e) { alert("分割エラー: " + e.message); } finally { hideOverlay(); }
+        }
+
+        async function executeSplitAll() {
+            if (!state.mainPdf) return;
+            showOverlay("全ページ分割中...");
+            try {
+                const count = state.mainPdf.getPageCount();
+                for (let i = 0; i < count; i++) {
+                    const out = await PDFLib.PDFDocument.create();
+                    const [cp] = await out.copyPages(state.mainPdf, [i]);
+                    out.addPage(cp);
+                    const bytes = await out.save();
+                    download(bytes, `page_${i+1}.pdf`);
+                    await new Promise(r => setTimeout(r, 100));
+                }
+            } catch (e) { alert("エラー: " + e.message); } finally { hideOverlay(); }
         }
 
         async function deleteSelected() {
             const indices = state.pages.map((p, i) => !p.selected ? i : null).filter(v => v !== null);
-            if (indices.length === state.pages.length) return alert("削除するページを選択してください");
+            if (indices.length === state.pages.length) return alert("全ページを削除することはできません");
+            if (indices.length === 0) return alert("削除するページを選択してください");
             showOverlay("処理中...");
-            const out = await PDFLib.PDFDocument.create();
-            const cp = await out.copyPages(state.mainPdf, indices);
-            cp.forEach(p => out.addPage(p));
-            download(await out.save(), "deleted.pdf");
-            hideOverlay();
+            try {
+                const out = await PDFLib.PDFDocument.create();
+                const cp = await out.copyPages(state.mainPdf, indices);
+                cp.forEach(p => out.addPage(p));
+                download(await out.save(), "deleted.pdf");
+            } catch (e) { alert("エラー: " + e.message); } finally { hideOverlay(); }
         }
 
         async function saveSortedPdf() {
-            const cards = document.getElementById('grid-sort').children;
-            const indices = Array.from(cards).map(c => parseInt(c.querySelector('p').textContent.replace('P.', '')) - 1);
+            const sortGrid = document.getElementById('grid-sort');
+            if (!sortGrid) return;
+            const cards = Array.from(sortGrid.children);
+            const indices = cards.map(c => parseInt(c.querySelector('p').textContent.replace('P.', '')) - 1);
             showOverlay("並べ替え中...");
-            const out = await PDFLib.PDFDocument.create();
-            const cp = await out.copyPages(state.mainPdf, indices);
-            cp.forEach(p => out.addPage(p));
-            download(await out.save(), "sorted.pdf");
-            hideOverlay();
+            try {
+                const out = await PDFLib.PDFDocument.create();
+                const cp = await out.copyPages(state.mainPdf, indices);
+                cp.forEach(p => out.addPage(p));
+                download(await out.save(), "sorted.pdf");
+            } catch (e) { alert("エラー: " + e.message); } finally { hideOverlay(); }
         }
 
         async function executeOCR() {
             const selected = state.pages.filter(p => p.selected);
             if (!selected.length) return alert("解析するページを選択してください");
-            document.getElementById('ocr-loader').classList.remove('hidden');
+            const loader = document.getElementById('ocr-loader');
+            if (loader) loader.classList.remove('hidden');
             const output = document.getElementById('ocr-out');
-            output.value = '';
+            if (output) output.value = '';
             try {
                 const worker = await Tesseract.createWorker('jpn+eng');
+                await worker.setParameters({ tessedit_pageseg_mode: Tesseract.PSM.AUTO });
+                
+                // OCR精度向上のため、高解像度で再描画する
+                const loading = pdfjsLib.getDocument({ data: state.mainBytes.slice(0) });
+                const pdf = await loading.promise;
+
                 for (let i = 0; i < selected.length; i++) {
-                    document.getElementById('ocr-stat').textContent = `解析中 (${i+1}/${selected.length})...`;
-                    const res = await worker.recognize(selected[i].canvasUrl);
-                    output.value += `--- Page ${selected[i].id} ---\n${res.data.text}\n\n`;
+                    const stat = document.getElementById('ocr-stat');
+                    if (stat) stat.textContent = `解析中 (${i+1}/${selected.length})...`;
+                    
+                    const page = await pdf.getPage(selected[i].id);
+                    const viewport = page.getViewport({ scale: 2.0 }); // 精度向上のためにスケールを上げる
+                    const canvas = document.createElement('canvas');
+                    const context = canvas.getContext('2d');
+                    canvas.width = viewport.width;
+                    canvas.height = viewport.height;
+                    
+                    // 白背景を明示的に塗る
+                    context.fillStyle = 'white';
+                    context.fillRect(0, 0, canvas.width, canvas.height);
+                    
+                    await page.render({ canvasContext: context, viewport }).promise;
+
+                    const res = await worker.recognize(canvas);
+                    if (output) {
+                        output.value += `--- Page ${selected[i].id} ---\n${res.data.text}\n\n`;
+                        output.scrollTop = output.scrollHeight;
+                    }
                 }
                 await worker.terminate();
-            } catch (err) { alert("OCR失敗: " + err.message); } finally { document.getElementById('ocr-loader').classList.add('hidden'); }
+            } catch (err) { alert("OCR失敗: " + err.message); } finally { if (loader) loader.classList.add('hidden'); }
         }
 
         async function applyPageNumbers() {
+            if (!state.mainBytes) return;
             showOverlay("適用中...");
-            const out = await PDFLib.PDFDocument.load(state.mainBytes.slice(0));
-            const font = await out.embedFont(PDFLib.StandardFonts.HelveticaBold);
-            const size = parseInt(document.getElementById('pg-size').value);
-            const pos = document.getElementById('pg-pos').value;
-            out.getPages().forEach((p, i) => {
-                const {width, height} = p.getSize();
-                const text = `${i+1}`;
-                const tw = font.widthOfTextAtSize(text, size);
-                let x = width/2 - tw/2, y = 20;
-                if(pos === 'bottom-right') x = width - tw - 30;
-                if(pos === 'top-center') y = height - size - 20;
-                p.drawText(text, {x, y, size, font});
-            });
-            download(await out.save(), "numbered.pdf");
-            hideOverlay();
+            try {
+                const out = await PDFLib.PDFDocument.load(state.mainBytes.slice(0));
+                const font = await out.embedFont(PDFLib.StandardFonts.HelveticaBold);
+                const size = parseInt(document.getElementById('pg-size').value);
+                const pos = document.getElementById('pg-pos').value;
+                out.getPages().forEach((p, i) => {
+                    const {width, height} = p.getSize();
+                    const text = `${i+1}`;
+                    const tw = font.widthOfTextAtSize(text, size);
+                    let x = width/2 - tw/2, y = 20;
+                    if(pos === 'bottom-right') x = width - tw - 30;
+                    if(pos === 'top-center') y = height - size - 20;
+                    p.drawText(text, {x, y, size, font, color: PDFLib.rgb(0, 0, 0)});
+                });
+                download(await out.save(), "numbered.pdf");
+            } catch (e) { alert("エラー: " + e.message); } finally { hideOverlay(); }
         }
 
         function addBookmarkRow() {
             const div = document.createElement('div');
             div.className = "flex gap-2 bookmark-row";
-            div.innerHTML = `<input type="number" placeholder="頁" class="w-16 border rounded p-1 text-sm bm-page"><input type="text" placeholder="タイトル" class="flex-1 border rounded p-1 text-sm bm-title">`;
-            document.getElementById('bookmark-inputs').appendChild(div);
+            const maxP = state.mainPdf ? state.mainPdf.getPageCount() : 999;
+            div.innerHTML = `<input type="number" placeholder="頁" class="w-16 border rounded p-1 text-xs bm-page" min="1" max="${maxP}"><input type="text" placeholder="タイトル" class="flex-1 border rounded p-1 text-xs bm-title"><button onclick="this.parentElement.remove()" class="text-slate-300 hover:text-red-500"><i data-lucide="x" class="w-3 h-3"></i></button>`;
+            const container = document.getElementById('bookmark-inputs');
+            if (container) {
+                container.appendChild(div);
+                lucide.createIcons();
+            }
+        }
+
+        function toUTF16BEHexString(str) {
+            let hex = 'FEFF'; // BOM
+            for (let i = 0; i < str.length; i++) {
+                let code = str.charCodeAt(i).toString(16).toUpperCase();
+                while (code.length < 4) code = '0' + code;
+                hex += code;
+            }
+            return PDFLib.PDFHexString.of(hex);
         }
 
         async function applyBookmarks() {
@@ -486,15 +782,60 @@
             });
             if (!bookmarks.length) return alert("しおりの情報を入力してください");
             
-            showOverlay("しおり作成中...");
-            // Note: pdf-lib itself lacks a native easy API for 'Outline'. 
-            // We use standard saving as a placeholder for processed document in this env.
-            // In a full production env, we'd use a lower level PDF dictionary manipulation.
-            const outBytes = await state.mainPdf.save();
-            download(outBytes, "bookmarked.pdf");
-            hideOverlay();
+            showOverlay("しおり(アウトライン)を生成中...");
+            try {
+                const pdfDoc = await PDFLib.PDFDocument.load(state.mainBytes.slice(0));
+                const context = pdfDoc.context;
+                const pageCount = pdfDoc.getPageCount();
+                
+                // 有効なページ範囲のしおりのみ抽出
+                const validBookmarks = bookmarks.filter(bm => bm.page >= 0 && bm.page < pageCount);
+                
+                if (validBookmarks.length > 0) {
+                    const outlinesDictRef = context.nextRef();
+                    const itemRefs = validBookmarks.map(() => context.nextRef());
+
+                    // アウトライン要素の構築
+                    validBookmarks.forEach((bm, i) => {
+                        const itemRef = itemRefs[i];
+                        const pageRef = pdfDoc.getPage(bm.page).ref;
+                        
+                        const itemDictObj = {
+                            Title: toUTF16BEHexString(bm.title),
+                            Parent: outlinesDictRef,
+                            Dest: [pageRef, PDFLib.PDFName.of('XYZ'), null, null, null]
+                        };
+
+                        if (i > 0) itemDictObj.Prev = itemRefs[i - 1];
+                        if (i < validBookmarks.length - 1) itemDictObj.Next = itemRefs[i + 1];
+
+                        context.assign(itemRef, context.obj(itemDictObj));
+                    });
+
+                    // アウトラインのルートディクショナリ構築
+                    const outlinesDict = context.obj({
+                        Type: PDFLib.PDFName.of('Outlines'),
+                        First: itemRefs[0],
+                        Last: itemRefs[itemRefs.length - 1],
+                        Count: PDFLib.PDFNumber.of(itemRefs.length)
+                    });
+
+                    context.assign(outlinesDictRef, outlinesDict);
+                    // カタログに登録
+                    pdfDoc.catalog.set(PDFLib.PDFName.of('Outlines'), outlinesDictRef);
+                }
+
+                const outBytes = await pdfDoc.save();
+                download(outBytes, "bookmarked.pdf");
+            } catch (e) {
+                console.error(e);
+                alert("エラー: " + e.message);
+            } finally {
+                hideOverlay();
+            }
         }
 
+        // --- Helpers ---
         function download(data, name) {
             const b = new Blob([data], {type:'application/pdf'});
             const l = document.createElement('a');
@@ -503,8 +844,16 @@
             l.click();
             setTimeout(() => URL.revokeObjectURL(l.href), 150);
         }
-        function showOverlay(m) { document.getElementById('overlay-msg').textContent = m; document.getElementById('global-overlay').classList.remove('hidden'); }
-        function hideOverlay() { document.getElementById('global-overlay').classList.add('hidden'); }
+        function showOverlay(m) { 
+            const msg = document.getElementById('overlay-msg');
+            if (msg) msg.textContent = m; 
+            const overlay = document.getElementById('global-overlay');
+            if (overlay) overlay.classList.remove('hidden'); 
+        }
+        function hideOverlay() { 
+            const overlay = document.getElementById('global-overlay');
+            if (overlay) overlay.classList.add('hidden'); 
+        }
     </script>
 </body>
 </html>
