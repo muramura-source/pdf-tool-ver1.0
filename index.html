@@ -1126,6 +1126,15 @@
         async function executeOCR() {
             const selected = state.pages.filter(p => p.selected);
             if (!selected.length) return alert("解析するページを選択してください");
+
+            // ↓ この確認ダイアログを追加
+            const confirmed = confirm(
+                "OCR実行時に、Tesseract言語モデル（日本語+英語、約30〜50MB）を\n" +
+                "インターネット上のCDNからダウンロードします。\n\n" +
+                "続行しますか？"
+            );
+            if (!confirmed) return;
+
             const loader = document.getElementById('ocr-loader');
             if (loader) loader.classList.remove('hidden');
             const output = document.getElementById('ocr-out');
