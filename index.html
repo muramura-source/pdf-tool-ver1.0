@@ -800,16 +800,8 @@
             }
         }
 
-        async function resolveSaveDestination(suggestedZipName) {
-            if (window.showDirectoryPicker) {
-                try {
-                    const dirHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
-                    return { mode: 'dir', dirHandle };
-                } catch (err) {
-                    if (err.name === 'AbortError') return null;
-                    console.warn('showDirectoryPicker 非対応:', err);
-                }
-            }
+        // 保存先を解決（ZIP保存に固定したフロー）
+        async function resolveSaveZip(suggestedZipName) {
             if (window.showSaveFilePicker) {
                 try {
                     const fileHandle = await window.showSaveFilePicker({
@@ -825,17 +817,10 @@
             return { mode: 'auto', zipName: suggestedZipName };
         }
 
-        async function writeFiles(dest, files) {
-            if (dest.mode === 'dir') {
-                for (const file of files) {
-                    const fh = await dest.dirHandle.getFileHandle(file.name, { create: true });
-                    const w = await fh.createWritable();
-                    await w.write(new Blob([file.data], { type: 'application/pdf' }));
-                    await w.close();
-                }
-                alert(`✅ ${files.length}件をフォルダに保存しました`);
-            } else {
-                showOverlay("ZIPにまとめています...");
+        // 生成された複数のPDFをZIP化して保存
+        async function finalizeAndSaveZip(dest, files) {
+            showOverlay("ZIPアーカイブを作成中...");
+            try {
                 const zip = new JSZip();
                 files.forEach(f => zip.file(f.name, f.data));
                 const blob = await zip.generateAsync({ type: 'blob' });
@@ -852,12 +837,15 @@
                     l.click();
                     setTimeout(() => URL.revokeObjectURL(l.href), 150);
                 }
+            } catch (e) {
+                alert("ZIP生成エラー: " + e.message);
+                hideOverlay();
             }
         }
 
         async function executeSplitTwo() {
             if (!state.mainPdf) return;
-            const dest = await resolveSaveDestination('split_parts.zip');
+            const dest = await resolveSaveZip('split_parts.zip');
             if (!dest) return;
 
             const val = parseInt(document.getElementById('split-slider').value);
@@ -875,7 +863,7 @@
                 cp2.forEach(p => out2.addPage(p));
                 files.push({ name: 'part2.pdf', data: await out2.save() });
 
-                await writeFiles(dest, files);
+                await finalizeAndSaveZip(dest, files);
             } catch (e) {
                 alert("分割エラー: " + e.message);
             } finally {
@@ -885,7 +873,7 @@
 
         async function executeSplitAll() {
             if (!state.mainPdf) return;
-            const dest = await resolveSaveDestination('all_pages.zip');
+            const dest = await resolveSaveZip('all_pages.zip');
             if (!dest) return;
 
             showOverlay("全ページ分割中...");
@@ -893,13 +881,13 @@
                 const files = [];
                 const count = state.mainPdf.getPageCount();
                 for (let i = 0; i < count; i++) {
-                    showOverlay(`分割中... (${i + 1} / ${count})`);
+                    showOverlay(`処理中... (${i + 1} / ${count})`);
                     const out = await PDFLib.PDFDocument.create();
                     const [cp] = await out.copyPages(state.mainPdf, [i]);
                     out.addPage(cp);
                     files.push({ name: `page_${i + 1}.pdf`, data: await out.save() });
                 }
-                await writeFiles(dest, files);
+                await finalizeAndSaveZip(dest, files);
             } catch (e) {
                 alert("エラー: " + e.message);
             } finally {
