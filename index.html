@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>高度なPDFエディター - 完全ローカル処理</title>
+    <title>高度なPDFエディター</title>
     <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
@@ -35,7 +35,6 @@
         
         .tab-btn.active { background-color: #2563eb !important; color: white !important; }
         
-        /* 閲覧タブ（PDFリーダー）用スタイル */
         .textLayer {
             position: absolute; left: 0; top: 0; right: 0; bottom: 0;
             overflow: hidden; opacity: 0.2; line-height: 1.0; pointer-events: auto;
@@ -69,7 +68,7 @@
         <div class="flex items-center gap-3">
             <div class="bg-blue-600 p-2 rounded-lg text-white"><i data-lucide="file-digit" class="w-5 h-5"></i></div>
             <div>
-                <h1 class="text-md font-bold text-slate-800 leading-tight">なんてねセキュアPDFツール</h1>
+                <h1 class="text-md font-bold text-slate-800 leading-tight">セキュアPDFツール</h1>
                 <p class="text-[9px] text-slate-400 uppercase tracking-widest font-semibold">Privacy First • Local Processing</p>
             </div>
         </div>
@@ -89,7 +88,6 @@
 
     <main class="flex-1 flex flex-col p-4 gap-4 overflow-hidden relative">
         
-        <!-- タブナビゲーション -->
         <div class="flex overflow-x-auto shrink-0 bg-white p-1 rounded-xl shadow-sm border border-slate-200 w-fit no-scrollbar">
             <button onclick="switchTab('view')" class="tab-btn px-5 py-2 rounded-lg text-xs font-bold flex items-center gap-2 whitespace-nowrap text-slate-600 hover:bg-slate-50 transition" data-tab="view"><i data-lucide="book-open" class="w-4 h-4"></i>閲覧・しおり作成</button>
             <button onclick="switchTab('merge')" class="tab-btn px-5 py-2 rounded-lg text-xs font-bold flex items-center gap-2 whitespace-nowrap text-slate-600 hover:bg-slate-50 transition" data-tab="merge"><i data-lucide="combine" class="w-4 h-4"></i>結合</button>
@@ -112,7 +110,6 @@
                 <input type="file" id="main-file-input" class="hidden" accept="application/pdf" multiple>
             </div>
 
-            <!-- View & Bookmark (Reader) -->
             <div id="tab-view" class="tab-content">
                 <div class="flex flex-col h-full overflow-hidden">
                     <div class="bg-slate-50 border-b p-2 flex items-center justify-between shrink-0">
@@ -154,7 +151,6 @@
                 </div>
             </div>
 
-            <!-- Merge -->
             <div id="tab-merge" class="tab-content">
                 <div class="flex flex-col h-full p-6 overflow-hidden">
                     <div class="flex justify-between items-center mb-6 shrink-0">
@@ -165,14 +161,13 @@
                 </div>
             </div>
 
-            <!-- Split -->
             <div id="tab-split" class="tab-content">
                 <div class="flex flex-col h-full p-6 overflow-hidden">
                     <div class="flex justify-between items-center mb-6 shrink-0">
                         <h2 class="text-lg font-bold">PDFの分割</h2>
                         <div class="flex gap-2">
-                            <button onclick="executeSplitAll()" class="px-4 py-2 border border-slate-200 text-slate-600 rounded-lg text-sm font-bold hover:bg-slate-50 transition">全ページ個別保存</button>
-                            <button onclick="executeSplitTwo()" class="px-5 py-2 bg-blue-600 text-white rounded-lg text-sm font-bold hover:bg-blue-700 shadow-lg shadow-blue-100">指定位置で分割保存</button>
+                            <button onclick="executeSplitAll()" class="px-4 py-2 border border-slate-200 text-slate-600 rounded-lg text-sm font-bold hover:bg-slate-50 transition">全ページをZIP保存</button>
+                            <button onclick="executeSplitTwo()" class="px-5 py-2 bg-blue-600 text-white rounded-lg text-sm font-bold hover:bg-blue-700 shadow-lg shadow-blue-100">指定位置で分割(ZIP)</button>
                         </div>
                     </div>
                     <div class="flex-1 flex flex-col gap-4 overflow-hidden">
@@ -188,7 +183,6 @@
                 </div>
             </div>
 
-            <!-- Delete -->
             <div id="tab-delete" class="tab-content">
                 <div class="flex flex-col h-full p-6 overflow-hidden">
                     <div class="flex justify-between items-center mb-6 shrink-0">
@@ -199,7 +193,6 @@
                 </div>
             </div>
 
-            <!-- Sort -->
             <div id="tab-sort" class="tab-content">
                 <div class="flex flex-col h-full p-6 overflow-hidden">
                     <div class="flex justify-between items-center mb-6 shrink-0">
@@ -210,7 +203,6 @@
                 </div>
             </div>
 
-            <!-- Page Number -->
             <div id="tab-pagenum" class="tab-content">
                 <div class="flex flex-col h-full p-6 overflow-y-auto custom-scrollbar">
                     <div class="flex justify-between items-center mb-6 shrink-0">
@@ -243,12 +235,11 @@
                                 <input type="number" id="pg-size" value="12" min="8" max="48" class="w-full border border-slate-200 p-3 rounded-lg bg-white text-sm font-medium">
                             </div>
                         </div>
-                        <p class="text-[11px] text-slate-400 mt-2">※写真や黒い背景でも見えるよう、文字の裏には白塗りの背景が敷かれます。</p>
+                        <p class="text-[11px] text-slate-400 mt-2">※背景色があっても見えるよう、文字の裏には白背景が敷かれます。</p>
                     </div>
                 </div>
             </div>
 
-            <!-- OCR -->
             <div id="tab-ocr" class="tab-content">
                 <div class="flex flex-col h-full p-6 overflow-hidden">
                     <div class="flex justify-between items-center mb-4 shrink-0">
@@ -432,8 +423,6 @@
                 hideOverlay();
             }
         }
-
-        // --- View & Bookmark (Reader) Functions ---
 
         function setReaderMode(mode) {
             state.readerMode = mode;
@@ -660,16 +649,11 @@
             return PDFLib.PDFHexString.of(hex);
         }
 
-        // -------------------------------------------------------
-        // [修正] しおり保存
-        // ユーザーアクティベーションが有効なうちにファイルハンドルを先取得してからPDF処理
-        // -------------------------------------------------------
         async function applyBookmarks() {
             if (!state.mainPdf) return;
             const validBookmarks = state.bookmarks.filter(bm => bm.title.trim() !== "");
             if (validBookmarks.length === 0) return alert("保存するしおりがありません。（タイトルを入力してください）");
 
-            // ① ユーザージェスチャーが有効なうちにファイルハンドルを先取得
             const fh = await getFileHandle('bookmarked.pdf');
             if (fh === 'cancelled') return;
 
@@ -708,7 +692,6 @@
                 }
 
                 const outBytes = await pdfDoc.save();
-                // ② 先取得済みハンドルで保存
                 await download(outBytes, "bookmarked.pdf", fh);
 
                 state.mainBytes = outBytes;
@@ -723,8 +706,6 @@
                 hideOverlay();
             }
         }
-
-        // --- Common / Edit Functions ---
 
         async function generateThumbnails() {
             if (!state.mainBytes) return;
@@ -786,8 +767,6 @@
             }
         }
 
-        // --- Split ---
-
         function renderSplitPreview(splitIndex) {
             const el = document.getElementById('grid-split-preview');
             if (!el || state.pages.length === 0) return;
@@ -821,22 +800,16 @@
             }
         }
 
-        // -------------------------------------------------------
-        // 保存先の解決（ユーザージェスチャーが有効なうちに呼ぶ）
-        // -------------------------------------------------------
         async function resolveSaveDestination(suggestedZipName) {
-            // 方法A: フォルダ選択（Chrome / Edge）
             if (window.showDirectoryPicker) {
                 try {
                     const dirHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
                     return { mode: 'dir', dirHandle };
                 } catch (err) {
-                    if (err.name === 'AbortError') return null; // キャンセル
-                    // 非対応エラーはZIPへフォールバック
-                    console.warn('showDirectoryPicker 非対応、ZIPへフォールバック:', err);
+                    if (err.name === 'AbortError') return null;
+                    console.warn('showDirectoryPicker 非対応:', err);
                 }
             }
-            // 方法B: ZIPの保存先ダイアログ（Firefox / Safari）
             if (window.showSaveFilePicker) {
                 try {
                     const fileHandle = await window.showSaveFilePicker({
@@ -846,28 +819,22 @@
                     return { mode: 'zip', fileHandle };
                 } catch (err) {
                     if (err.name === 'AbortError') return null;
-                    console.warn('showSaveFilePicker 失敗、自動DLへフォールバック:', err);
+                    console.warn('showSaveFilePicker 失敗:', err);
                 }
             }
-            // 方法C: 自動ダウンロード（最終フォールバック）
             return { mode: 'auto', zipName: suggestedZipName };
         }
 
-        // -------------------------------------------------------
-        // 確定済みの保存先へファイル群を書き込む
-        // -------------------------------------------------------
         async function writeFiles(dest, files) {
             if (dest.mode === 'dir') {
-                // フォルダへ直接書き込み
                 for (const file of files) {
                     const fh = await dest.dirHandle.getFileHandle(file.name, { create: true });
                     const w = await fh.createWritable();
                     await w.write(new Blob([file.data], { type: 'application/pdf' }));
                     await w.close();
                 }
-                alert(`✅ ${files.length}件を選択フォルダに保存しました`);
+                alert(`✅ ${files.length}件をフォルダに保存しました`);
             } else {
-                // ZIPにまとめて保存（zip・autoどちらも共通）
                 showOverlay("ZIPにまとめています...");
                 const zip = new JSZip();
                 files.forEach(f => zip.file(f.name, f.data));
@@ -879,7 +846,6 @@
                     await w.write(blob);
                     await w.close();
                 } else {
-                    // auto（自動ダウンロード）
                     const l = document.createElement('a');
                     l.href = URL.createObjectURL(blob);
                     l.download = dest.zipName;
@@ -889,16 +855,10 @@
             }
         }
 
-        // -------------------------------------------------------
-        // 指定位置で2分割
-        // ① ダイアログを先に出す → ② 処理 → ③ 書き込み
-        // -------------------------------------------------------
         async function executeSplitTwo() {
             if (!state.mainPdf) return;
-
-            // ① ユーザージェスチャーが有効なうちに保存先を確定
-            const dest = await resolveSaveDestination('split_files.zip');
-            if (!dest) return; // キャンセル
+            const dest = await resolveSaveDestination('split_parts.zip');
+            if (!dest) return;
 
             const val = parseInt(document.getElementById('split-slider').value);
             showOverlay("分割中...");
@@ -915,8 +875,6 @@
                 cp2.forEach(p => out2.addPage(p));
                 files.push({ name: 'part2.pdf', data: await out2.save() });
 
-                hideOverlay();
-                // ③ 確定済みの保存先へ書き込み
                 await writeFiles(dest, files);
             } catch (e) {
                 alert("分割エラー: " + e.message);
@@ -925,16 +883,10 @@
             }
         }
 
-        // -------------------------------------------------------
-        // 全ページ個別分割
-        // ① ダイアログを先に出す → ② 処理 → ③ 書き込み
-        // -------------------------------------------------------
         async function executeSplitAll() {
             if (!state.mainPdf) return;
-
-            // ① ユーザージェスチャーが有効なうちに保存先を確定
             const dest = await resolveSaveDestination('all_pages.zip');
-            if (!dest) return; // キャンセル
+            if (!dest) return;
 
             showOverlay("全ページ分割中...");
             try {
@@ -947,8 +899,6 @@
                     out.addPage(cp);
                     files.push({ name: `page_${i + 1}.pdf`, data: await out.save() });
                 }
-                hideOverlay();
-                // ③ 確定済みの保存先へ書き込み
                 await writeFiles(dest, files);
             } catch (e) {
                 alert("エラー: " + e.message);
@@ -956,8 +906,6 @@
                 hideOverlay();
             }
         }
-
-        // --- Merge ---
 
         function renderMergeList() {
             const list = document.getElementById('merge-list');
@@ -980,16 +928,8 @@
             checkState();
         }
 
-        // --- Execute Process ---
-
-        // -------------------------------------------------------
-        // [修正] 結合
-        // ユーザーアクティベーションが有効なうちにファイルハンドルを先取得してからPDF処理
-        // -------------------------------------------------------
         async function executeMerge() {
             if (state.mergeQueue.length < 2) return alert("2つ以上のファイルが必要です");
-
-            // ① ユーザージェスチャーが有効なうちにファイルハンドルを先取得
             const fh = await getFileHandle('merged.pdf');
             if (fh === 'cancelled') return;
 
@@ -1001,7 +941,6 @@
                     const cp = await out.copyPages(src, src.getPageIndices());
                     cp.forEach(p => out.addPage(p));
                 }
-                // ② 先取得済みハンドルで保存
                 await download(await out.save(), "merged.pdf", fh);
             } catch (e) {
                 alert("結合エラー: " + e.message);
@@ -1010,16 +949,11 @@
             }
         }
 
-        // -------------------------------------------------------
-        // [修正] ページ削除
-        // ユーザーアクティベーションが有効なうちにファイルハンドルを先取得してからPDF処理
-        // -------------------------------------------------------
         async function deleteSelected() {
             const indices = state.pages.map((p, i) => !p.selected ? i : null).filter(v => v !== null);
             if (indices.length === state.pages.length) return alert("全ページを削除することはできません");
             if (indices.length === 0) return alert("削除するページを選択してください");
 
-            // ① ユーザージェスチャーが有効なうちにファイルハンドルを先取得
             const fh = await getFileHandle('deleted.pdf');
             if (fh === 'cancelled') return;
 
@@ -1028,7 +962,6 @@
                 const out = await PDFLib.PDFDocument.create();
                 const cp = await out.copyPages(state.mainPdf, indices);
                 cp.forEach(p => out.addPage(p));
-                // ② 先取得済みハンドルで保存
                 await download(await out.save(), "deleted.pdf", fh);
             } catch (e) {
                 alert("エラー: " + e.message);
@@ -1037,15 +970,9 @@
             }
         }
 
-        // -------------------------------------------------------
-        // [修正] 並び替え保存
-        // ユーザーアクティベーションが有効なうちにファイルハンドルを先取得してからPDF処理
-        // -------------------------------------------------------
         async function saveSortedPdf() {
             const sortGrid = document.getElementById('grid-sort');
             if (!sortGrid) return;
-
-            // ① ユーザージェスチャーが有効なうちにファイルハンドルを先取得
             const fh = await getFileHandle('sorted.pdf');
             if (fh === 'cancelled') return;
 
@@ -1056,7 +983,6 @@
                 const out = await PDFLib.PDFDocument.create();
                 const cp = await out.copyPages(state.mainPdf, indices);
                 cp.forEach(p => out.addPage(p));
-                // ② 先取得済みハンドルで保存
                 await download(await out.save(), "sorted.pdf", fh);
             } catch (e) {
                 alert("エラー: " + e.message);
@@ -1065,14 +991,8 @@
             }
         }
 
-        // -------------------------------------------------------
-        // [修正] ページ番号付与
-        // ユーザーアクティベーションが有効なうちにファイルハンドルを先取得してからPDF処理
-        // -------------------------------------------------------
         async function applyPageNumbers() {
             if (!state.mainBytes) return;
-
-            // ① ユーザージェスチャーが有効なうちにファイルハンドルを先取得
             const fh = await getFileHandle('numbered.pdf');
             if (fh === 'cancelled') return;
 
@@ -1111,7 +1031,6 @@
                     });
                     page.drawText(text, { x, y, size, font, color: PDFLib.rgb(0, 0, 0) });
                 });
-                // ② 先取得済みハンドルで保存
                 await download(await out.save(), "numbered.pdf", fh);
             } catch (e) {
                 alert("エラー: " + e.message);
@@ -1163,41 +1082,21 @@
             }
         }
 
-        // -------------------------------------------------------
-        // [新規] ファイルハンドル先取得ヘルパー
-        // ボタン押下直後（ユーザーアクティベーションが有効なうち）に呼ぶこと。
-        // 戻り値:
-        //   FileSystemFileHandle → 取得成功
-        //   'cancelled'          → ユーザーがキャンセル
-        //   null                 → API非対応またはブロック（自動DLへフォールバック）
-        // -------------------------------------------------------
         async function getFileHandle(suggestedName, isPdf = true) {
-            if (!window.showSaveFilePicker) return null; // 非対応ブラウザ
+            if (!window.showSaveFilePicker) return null;
             try {
                 const types = isPdf
                     ? [{ description: 'PDFファイル', accept: { 'application/pdf': ['.pdf'] } }]
                     : [{ description: 'ZIPファイル', accept: { 'application/zip': ['.zip'] } }];
                 return await window.showSaveFilePicker({ suggestedName, types });
             } catch (err) {
-                if (err.name === 'AbortError') return 'cancelled'; // ユーザーがキャンセル
-                console.warn('showSaveFilePicker error:', err.name, err.message);
-                return null; // APIがブロックされている場合 → 自動DLへ
+                if (err.name === 'AbortError') return 'cancelled';
+                return null;
             }
         }
 
-        // -------------------------------------------------------
-        // [修正] ダウンロード（単一ファイル用）
-        // preHandle: getFileHandle() の戻り値を渡すと先取得済みハンドルで保存する。
-        //   FileSystemFileHandle → そのハンドルで書き込み
-        //   'cancelled'          → 何もしない
-        //   null                 → 自動ダウンロード（API非対応）
-        //   undefined            → 後方互換：その場でshowSaveFilePickerを試みる
-        // -------------------------------------------------------
         async function download(data, name, preHandle) {
-            // キャンセル済みの場合は何もしない
             if (preHandle === 'cancelled') return;
-
-            // 先取得済みハンドルがある場合はそれを使用
             if (preHandle !== undefined && preHandle !== null) {
                 try {
                     const writable = await preHandle.createWritable();
@@ -1205,11 +1104,9 @@
                     await writable.close();
                     return;
                 } catch (err) {
-                    console.warn('Pre-handle write failed, falling back to auto-download:', err);
-                    // 書き込み失敗時は自動ダウンロードへ
+                    console.warn('Pre-handle write failed:', err);
                 }
             } else if (preHandle === undefined) {
-                // preHandle未指定（後方互換）: その場でダイアログを試みる
                 if (window.showSaveFilePicker) {
                     try {
                         const fileHandle = await window.showSaveFilePicker({
@@ -1222,11 +1119,9 @@
                         return;
                     } catch (err) {
                         if (err.name === 'AbortError') return;
-                        console.warn('showSaveFilePicker failed, falling back to auto-download:', err);
                     }
                 }
             }
-            // preHandle === null、またはすべて失敗した場合: 自動ダウンロード
             const b = new Blob([data], { type: 'application/pdf' });
             const l = document.createElement('a');
             l.href = URL.createObjectURL(b);
