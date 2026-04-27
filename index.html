@@ -94,14 +94,13 @@
         
         <div class="flex overflow-x-auto shrink-0 bg-white p-1 rounded-xl shadow-sm border border-slate-200 w-fit no-scrollbar">
             <button onclick="switchTab('view')" class="tab-btn px-5 py-2 rounded-lg text-xs font-bold flex items-center gap-2 whitespace-nowrap text-slate-600 hover:bg-slate-50 transition" data-tab="view"><i data-lucide="book-open" class="w-4 h-4"></i>閲覧・しおり</button>
+            <button onclick="switchTab('convert')" class="tab-btn px-5 py-2 rounded-lg text-xs font-bold flex items-center gap-2 whitespace-nowrap text-slate-600 hover:bg-slate-50 transition" data-tab="convert"><i data-lucide="image" class="w-4 h-4"></i>画像 ⇄ PDF</button>
             <button onclick="switchTab('merge')" class="tab-btn px-5 py-2 rounded-lg text-xs font-bold flex items-center gap-2 whitespace-nowrap text-slate-600 hover:bg-slate-50 transition" data-tab="merge"><i data-lucide="combine" class="w-4 h-4"></i>結合</button>
             <button onclick="switchTab('split')" class="tab-btn px-5 py-2 rounded-lg text-xs font-bold flex items-center gap-2 whitespace-nowrap text-slate-600 hover:bg-slate-50 transition" data-tab="split"><i data-lucide="scissors" class="w-4 h-4"></i>分割</button>
-            <button onclick="switchTab('delete')" class="tab-btn px-5 py-2 rounded-lg text-xs font-bold flex items-center gap-2 whitespace-nowrap text-slate-600 hover:bg-slate-50 transition" data-tab="delete"><i data-lucide="trash-2" class="w-4 h-4"></i>削除</button>
             <button onclick="switchTab('sort')" class="tab-btn px-5 py-2 rounded-lg text-xs font-bold flex items-center gap-2 whitespace-nowrap text-slate-600 hover:bg-slate-50 transition" data-tab="sort"><i data-lucide="arrow-up-down" class="w-4 h-4"></i>並び替え</button>
+            <button onclick="switchTab('delete')" class="tab-btn px-5 py-2 rounded-lg text-xs font-bold flex items-center gap-2 whitespace-nowrap text-slate-600 hover:bg-slate-50 transition" data-tab="delete"><i data-lucide="trash-2" class="w-4 h-4"></i>削除</button>
             <button onclick="switchTab('pagenum')" class="tab-btn px-5 py-2 rounded-lg text-xs font-bold flex items-center gap-2 whitespace-nowrap text-slate-600 hover:bg-slate-50 transition" data-tab="pagenum"><i data-lucide="hash" class="w-4 h-4"></i>ページ番号</button>
             <button onclick="switchTab('ocr')" class="tab-btn px-5 py-2 rounded-lg text-xs font-bold flex items-center gap-2 whitespace-nowrap text-slate-600 hover:bg-slate-50 transition" data-tab="ocr"><i data-lucide="scan-text" class="w-4 h-4"></i>OCR</button>
-            <!-- 新規追加: 画像変換タブ -->
-            <button onclick="switchTab('convert')" class="tab-btn px-5 py-2 rounded-lg text-xs font-bold flex items-center gap-2 whitespace-nowrap text-slate-600 hover:bg-slate-50 transition" data-tab="convert"><i data-lucide="image" class="w-4 h-4"></i>画像 ⇄ PDF</button>
         </div>
 
         <div class="flex-1 bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden relative">
@@ -384,6 +383,7 @@
         let state = {
             mainPdf: null,
             mainBytes: null,
+            mainFileMeta: null,
             pages: [],
             mergeQueue: [],
             imageQueue: [], // 新規追加: 画像→PDF用
@@ -451,6 +451,7 @@
             state.currentTab = tabId;
             state.mainPdf = null;
             state.mainBytes = null;
+            state.mainFileMeta = null;
             state.pages = [];
             state.mergeQueue = [];
             state.imageQueue = []; // 画像キューもリセット
@@ -490,9 +491,14 @@
 
             const fileInfo = document.getElementById('main-file-info');
             if (fileInfo) {
-                if (state.currentTab !== 'merge' && state.currentTab !== 'convert' && state.mainBytes !== null) {
+                if (state.currentTab !== 'merge' && state.mainBytes !== null) {
                     fileInfo.classList.remove('hidden');
                     fileInfo.classList.add('flex');
+                    if (state.mainFileMeta) {
+                        document.getElementById('info-filename').textContent = state.mainFileMeta.name;
+                        document.getElementById('info-pagecount').textContent = state.mainFileMeta.pages + " ページ";
+                        document.getElementById('info-filesize').textContent = formatBytes(state.mainFileMeta.size);
+                    }
                 } else if (state.currentTab === 'convert' && state.imageQueue.length > 0) {
                     // convertタブで画像がある場合の情報表示
                     fileInfo.classList.remove('hidden');
@@ -569,6 +575,8 @@
 
                     state.mainBytes = await f.arrayBuffer();
                     state.mainPdf = await PDFLib.PDFDocument.load(state.mainBytes.slice(0));
+
+                    state.mainFileMeta = { name: f.name, size: f.size, pages: state.mainPdf.getPageCount() };
 
                     const pagecountEl = document.getElementById('info-pagecount');
                     if (pagecountEl) pagecountEl.textContent = state.mainPdf.getPageCount() + " ページ";
