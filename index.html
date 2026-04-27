@@ -7,7 +7,6 @@
     <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
-    <script src="https://unpkg.com/tesseract.js@5.0.3/dist/tesseract.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://cdn.tailwindcss.com"></script>
@@ -100,7 +99,6 @@
             <button onclick="switchTab('sort')" class="tab-btn px-5 py-2 rounded-lg text-xs font-bold flex items-center gap-2 whitespace-nowrap text-slate-600 hover:bg-slate-50 transition" data-tab="sort"><i data-lucide="arrow-up-down" class="w-4 h-4"></i>並び替え</button>
             <button onclick="switchTab('delete')" class="tab-btn px-5 py-2 rounded-lg text-xs font-bold flex items-center gap-2 whitespace-nowrap text-slate-600 hover:bg-slate-50 transition" data-tab="delete"><i data-lucide="trash-2" class="w-4 h-4"></i>削除</button>
             <button onclick="switchTab('pagenum')" class="tab-btn px-5 py-2 rounded-lg text-xs font-bold flex items-center gap-2 whitespace-nowrap text-slate-600 hover:bg-slate-50 transition" data-tab="pagenum"><i data-lucide="hash" class="w-4 h-4"></i>ページ番号</button>
-            <button onclick="switchTab('ocr')" class="tab-btn px-5 py-2 rounded-lg text-xs font-bold flex items-center gap-2 whitespace-nowrap text-slate-600 hover:bg-slate-50 transition" data-tab="ocr"><i data-lucide="scan-text" class="w-4 h-4"></i>OCR</button>
         </div>
 
         <div class="flex-1 bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden relative">
@@ -108,8 +106,10 @@
             <div id="empty-state" class="absolute inset-0 bg-white z-[60] flex flex-col items-center justify-center p-8 text-center transition-opacity duration-300">
                 <div class="bg-blue-50 p-6 rounded-full text-blue-600 mb-6 shadow-inner"><i data-lucide="upload-cloud" class="w-10 h-10"></i></div>
                 <h3 class="text-xl font-bold text-slate-800 mb-2">ファイルを読み込む</h3>
-                <p class="text-slate-500 mb-8 max-w-sm text-sm">PDF または 画像ファイル をドラッグ＆ドロップするか、<br>下のボタンから選択してください。<br><span class="text-xs text-red-500">※タブを切り替えるとファイルはリセットされます</span></p>
-                <div class="flex gap-4">
+                <p id="empty-state-desc" class="text-slate-500 mb-8 max-w-sm text-sm">
+                    PDF または 画像ファイル をドラッグ＆ドロップするか、<br>下のボタンから選択してください。<br><span class="text-xs text-red-500">※タブを切り替えるとファイルはリセットされます</span>
+                </p>
+                <div id="empty-state-btns" class="flex justify-center gap-4">
                     <button onclick="triggerFileInput('application/pdf')" class="bg-blue-600 text-white px-6 py-3 rounded-xl font-bold shadow-xl shadow-blue-200 hover:bg-blue-700 transition flex items-center gap-2">
                         <i data-lucide="file-plus-2" class="w-5 h-5"></i> PDFを選択
                     </button>
@@ -120,7 +120,6 @@
                 <input type="file" id="main-file-input" class="hidden" multiple>
             </div>
 
-            <!-- 既存のタブコンテンツ -->
             <div id="tab-view" class="tab-content">
                 <div class="flex flex-col h-full overflow-hidden">
                     <div class="bg-slate-50 border-b p-2 flex items-center justify-between shrink-0">
@@ -251,31 +250,7 @@
                 </div>
             </div>
 
-            <div id="tab-ocr" class="tab-content">
-                <div class="flex flex-col h-full p-6 overflow-hidden">
-                    <div class="flex justify-between items-center mb-4 shrink-0">
-                        <h2 class="text-lg font-bold">文字認識 (OCR)</h2>
-                        <button onclick="executeOCR()" id="btn-ocr-start" class="bg-blue-600 text-white px-5 py-2 rounded-lg font-bold flex items-center gap-2 hover:bg-blue-700 transition">
-                            <i data-lucide="scan" class="w-4 h-4"></i> 解析開始
-                        </button>
-                    </div>
-                    <div class="flex-1 flex gap-4 overflow-hidden h-full">
-                        <div class="w-64 flex flex-col shrink-0 border border-slate-100 rounded-2xl bg-slate-50 overflow-hidden h-full">
-                            <div class="p-3 border-b bg-white text-[10px] font-bold text-slate-500 uppercase">ページを選択</div>
-                            <div id="grid-ocr-pick" class="flex-1 overflow-y-auto p-3 grid grid-cols-1 gap-3 custom-scrollbar"></div>
-                        </div>
-                        <div class="flex-1 border border-slate-200 rounded-2xl flex flex-col bg-white overflow-hidden relative h-full">
-                            <textarea id="ocr-out" class="flex-1 p-6 text-sm leading-relaxed focus:outline-none resize-none font-mono custom-scrollbar" placeholder="認識結果がここに表示されます..."></textarea>
-                            <div id="ocr-loader" class="hidden absolute inset-0 bg-white/90 backdrop-blur-sm flex flex-col items-center justify-center">
-                                <div class="loader w-10 h-10 border-4 border-slate-200 rounded-full mb-4"></div>
-                                <p id="ocr-stat" class="text-sm font-bold text-slate-700">解析中...</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- 新規追加: 画像変換タブコンテンツ -->
+            <!-- 画像変換タブコンテンツ -->
             <div id="tab-convert" class="tab-content">
                 <div class="flex flex-col h-full p-6 overflow-y-auto custom-scrollbar">
                     
@@ -289,7 +264,7 @@
                         <div class="p-6 grid grid-cols-1 md:grid-cols-3 gap-6 relative">
                             <!-- 未読み込み時のカバー -->
                             <div id="convert-pdf-overlay" class="absolute inset-0 bg-white/80 backdrop-blur-[2px] z-10 flex items-center justify-center">
-                                <p class="text-sm font-bold text-slate-500">PDFファイルが読み込まれていません</p>
+                                <p class="text-sm font-bold text-slate-500 bg-white/90 px-4 py-2 rounded-lg shadow-sm">PDFファイルが読み込まれていません</p>
                             </div>
 
                             <div class="space-y-2">
@@ -316,7 +291,7 @@
                                         <option value="image/jpeg">JPEG形式</option>
                                     </select>
                                     <button onclick="executePdfToImages()" class="bg-blue-600 text-white px-6 rounded-lg font-bold hover:bg-blue-700 shadow-lg shadow-blue-100 flex items-center justify-center gap-2 whitespace-nowrap">
-                                        ZIPで保存
+                                        保存する
                                     </button>
                                 </div>
                             </div>
@@ -335,22 +310,19 @@
                             <h2 class="text-md font-bold text-slate-800 flex items-center gap-2">
                                 <i data-lucide="file-up" class="w-5 h-5 text-emerald-600"></i> 画像をPDFにまとめる
                             </h2>
-                            <div class="flex gap-3">
-                                <button onclick="clearImageToPdf()" class="text-xs font-bold text-slate-500 hover:text-slate-700 transition">リストをクリア</button>
-                                <button onclick="executeImagesToPdf()" class="bg-emerald-600 text-white px-5 py-2 rounded-lg text-sm font-bold hover:bg-emerald-700 shadow-lg shadow-emerald-100 flex items-center gap-2">
-                                    PDFとして保存
+                            <div class="flex gap-3 items-center">
+                                <button onclick="triggerFileInput('image/*')" class="text-xs font-bold text-emerald-600 hover:text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-lg transition flex items-center gap-1" title="画像を追加">
+                                    <i data-lucide="plus" class="w-4 h-4"></i> 追加
+                                </button>
+                                <span class="text-slate-300">|</span>
+                                <button onclick="clearImageToPdf()" class="text-xs font-bold text-slate-500 hover:text-slate-700 transition">リストクリア</button>
+                                <button onclick="executeImagesToPdf()" class="bg-emerald-600 text-white px-5 py-2 rounded-lg text-sm font-bold hover:bg-emerald-700 shadow-lg shadow-emerald-100 flex items-center gap-2 ml-2">
+                                    PDFで保存
                                 </button>
                             </div>
                         </div>
                         
                         <div class="flex-1 p-6 flex flex-col relative">
-                            <!-- 追加ボタンエリア -->
-                            <div class="mb-4">
-                                <button onclick="triggerFileInput('image/*')" class="border-2 border-dashed border-emerald-300 bg-emerald-50 text-emerald-700 w-full py-4 rounded-xl font-bold hover:bg-emerald-100 transition flex items-center justify-center gap-2">
-                                    <i data-lucide="plus-circle" class="w-5 h-5"></i> 画像を追加する (ドラッグ＆ドロップも可)
-                                </button>
-                            </div>
-                            
                             <!-- 画像リスト -->
                             <div class="flex-1 bg-slate-50 border border-slate-200 rounded-xl p-4 overflow-y-auto custom-scrollbar">
                                 <div id="img-to-pdf-list" class="flex flex-wrap gap-4">
@@ -359,6 +331,7 @@
                                 <div id="img-to-pdf-empty" class="h-full flex flex-col items-center justify-center text-slate-400">
                                     <i data-lucide="image" class="w-12 h-12 mb-2 opacity-50"></i>
                                     <p class="text-sm font-medium">画像が選択されていません</p>
+                                    <p class="text-xs mt-1 opacity-70">右上の追加ボタン、または直接ドラッグ＆ドロップしてください</p>
                                 </div>
                             </div>
                         </div>
@@ -386,7 +359,7 @@
             mainFileMeta: null,
             pages: [],
             mergeQueue: [],
-            imageQueue: [], // 新規追加: 画像→PDF用
+            imageQueue: [], 
             currentTab: 'view',
             dragCounter: 0,
             zoom: 1.0,
@@ -447,6 +420,47 @@
             if (sidebar) sidebar.classList.toggle('hidden');
         }
 
+        function updateEmptyStateUI() {
+            const isImageAllowed = (state.currentTab === 'view' || state.currentTab === 'convert');
+            
+            // ドロップオーバーレイの更新
+            const dropOverlayTitle = document.querySelector('#drop-overlay p.text-xl');
+            const dropOverlaySub = document.querySelector('#drop-overlay p.text-sm');
+            if (dropOverlayTitle) dropOverlayTitle.textContent = isImageAllowed ? 'ここにファイルをドロップ' : 'ここにPDFをドロップ';
+            if (dropOverlaySub) dropOverlaySub.textContent = isImageAllowed ? 'PDF または 画像ファイル (PNG/JPG)' : 'PDFファイルのみ';
+
+            // empty-stateの更新
+            const descEl = document.getElementById('empty-state-desc');
+            const btnsEl = document.getElementById('empty-state-btns');
+            
+            if (descEl) {
+                descEl.innerHTML = isImageAllowed 
+                    ? 'PDF または 画像ファイル をドラッグ＆ドロップするか、<br>下のボタンから選択してください。<br><span class="text-xs text-red-500">※タブを切り替えるとファイルはリセットされます</span>'
+                    : 'PDFファイルをドラッグ＆ドロップするか、<br>下のボタンから選択してください。<br><span class="text-xs text-red-500">※タブを切り替えるとファイルはリセットされます</span>';
+            }
+            
+            if (btnsEl) {
+                if (isImageAllowed) {
+                    btnsEl.innerHTML = `
+                        <button onclick="triggerFileInput('application/pdf')" class="bg-blue-600 text-white px-6 py-3 rounded-xl font-bold shadow-xl shadow-blue-200 hover:bg-blue-700 transition flex items-center gap-2">
+                            <i data-lucide="file-plus-2" class="w-5 h-5"></i> PDFを選択
+                        </button>
+                        <button onclick="triggerFileInput('image/*')" class="bg-emerald-600 text-white px-6 py-3 rounded-xl font-bold shadow-xl shadow-emerald-200 hover:bg-emerald-700 transition flex items-center gap-2">
+                            <i data-lucide="image-plus" class="w-5 h-5"></i> 画像を選択
+                        </button>
+                    `;
+                } else {
+                    btnsEl.innerHTML = `
+                        <button onclick="triggerFileInput('application/pdf')" class="bg-blue-600 text-white px-8 py-3 rounded-xl font-bold shadow-xl shadow-blue-200 hover:bg-blue-700 transition flex items-center gap-3">
+                            <i data-lucide="file-plus-2" class="w-5 h-5"></i> PDFを選択
+                        </button>
+                    `;
+                }
+            }
+            const fileInput = document.getElementById('main-file-input');
+            if(fileInput) fileInput.accept = isImageAllowed ? 'application/pdf,image/png,image/jpeg,image/jpg' : 'application/pdf';
+        }
+
         function switchTab(tabId) {
             state.currentTab = tabId;
             state.mainPdf = null;
@@ -454,12 +468,11 @@
             state.mainFileMeta = null;
             state.pages = [];
             state.mergeQueue = [];
-            state.imageQueue = []; // 画像キューもリセット
+            state.imageQueue = []; 
             state.readerPdf = null;
             state.zoom = 1.0;
             state.bookmarks = [];
 
-            if (document.getElementById('ocr-out')) document.getElementById('ocr-out').value = '';
             document.getElementById('main-file-input').value = '';
             if (document.getElementById('reader-viewport')) document.getElementById('reader-viewport').innerHTML = '';
             if (document.getElementById('reader-title')) document.getElementById('reader-title').textContent = '';
@@ -473,6 +486,7 @@
             if (targetBtn) targetBtn.classList.add('active');
 
             setReaderMode('pan');
+            updateEmptyStateUI();
             checkState();
             lucide.createIcons();
         }
@@ -484,8 +498,8 @@
         }
 
         function checkState() {
-            // convertタブの場合は、常にアップロードUIを非表示にする（専用UIがあるため）
-            const hasData = (state.mergeQueue.length > 0) || (state.mainBytes !== null) || (state.currentTab === 'convert');
+            // 何らかのデータがあるか（全体空状態UIを消す判定）
+            const hasData = (state.mergeQueue.length > 0) || (state.mainBytes !== null) || (state.imageQueue.length > 0);
             const emptyState = document.getElementById('empty-state');
             if (emptyState) emptyState.classList.toggle('hidden', hasData);
 
@@ -500,7 +514,6 @@
                         document.getElementById('info-filesize').textContent = formatBytes(state.mainFileMeta.size);
                     }
                 } else if (state.currentTab === 'convert' && state.imageQueue.length > 0) {
-                    // convertタブで画像がある場合の情報表示
                     fileInfo.classList.remove('hidden');
                     fileInfo.classList.add('flex');
                     document.getElementById('info-filename').textContent = "画像リスト";
@@ -522,18 +535,61 @@
             }
         }
 
+        // 共通のPDFロード関数
+        async function loadMainPdf(f) {
+            const titleEl = document.getElementById('reader-title');
+            if (titleEl) titleEl.textContent = f.name;
+
+            state.mainBytes = await f.arrayBuffer();
+            state.mainPdf = await PDFLib.PDFDocument.load(state.mainBytes.slice(0));
+
+            state.mainFileMeta = { name: f.name, size: f.size, pages: state.mainPdf.getPageCount() };
+
+            if (state.currentTab === 'view') {
+                const loadingTask = pdfjsLib.getDocument({ data: state.mainBytes.slice(0) });
+                state.readerPdf = await loadingTask.promise;
+                await extractBookmarks();
+                await renderReader();
+            } else {
+                await generateThumbnails();
+                setupControlsForTab();
+                renderGrids();
+            }
+        }
+
+        // 画像群からPDFを生成する関数（閲覧タブでのプレビュー用）
+        async function createPdfFromImages(imageFiles) {
+            const pdfDoc = await PDFLib.PDFDocument.create();
+            for (const f of imageFiles) {
+                const imgBytes = await f.arrayBuffer();
+                let pdfImage;
+                if (f.type === 'image/png') {
+                    pdfImage = await pdfDoc.embedPng(imgBytes);
+                } else if (f.type === 'image/jpeg' || f.type === 'image/jpg') {
+                    pdfImage = await pdfDoc.embedJpg(imgBytes);
+                } else {
+                    continue;
+                }
+                const { width, height } = pdfImage.scale(1);
+                const page = pdfDoc.addPage([width, height]);
+                page.drawImage(pdfImage, { x: 0, y: 0, width, height });
+            }
+            return await pdfDoc.save();
+        }
+
         async function handleFileSelection(files) {
             if (!files.length) return;
+            
+            const hasImage = Array.from(files).some(f => f.type.startsWith('image/'));
+            
+            // 許可されていないタブでの画像入力をブロック
+            if (hasImage && state.currentTab !== 'view' && state.currentTab !== 'convert') {
+                alert('このタブでは画像ファイルは使用できません。PDFファイルを選択してください。');
+                return;
+            }
+
             showOverlay("解析中...");
             try {
-                // 画像ファイルが含まれているかチェック
-                const hasImage = Array.from(files).some(f => f.type.startsWith('image/'));
-                
-                // 画像が含まれていて、現在のタブがconvertでなければ、自動的にconvertに切り替える
-                if (hasImage && state.currentTab !== 'convert') {
-                    switchTab('convert');
-                }
-
                 if (state.currentTab === 'merge') {
                     for (const f of files) {
                         if (f.type !== 'application/pdf') continue;
@@ -541,56 +597,43 @@
                         state.mergeQueue.push({ id: Math.random().toString(36).substr(2, 9), name: f.name, bytes: buffer.slice(0) });
                     }
                     renderMergeList();
-                } else if (state.currentTab === 'convert' && hasImage) {
-                    // 画像ファイル群の読み込み処理
-                    for (const f of files) {
-                        if (!f.type.startsWith('image/')) continue;
-                        
-                        // FileReaderでDataURLを生成してプレビュー用に保持
+                } else if (state.currentTab === 'convert') {
+                    let pdfFile = Array.from(files).find(f => f.type === 'application/pdf');
+                    if (pdfFile) await loadMainPdf(pdfFile);
+                    
+                    let imageFiles = Array.from(files).filter(f => f.type.startsWith('image/'));
+                    for (const f of imageFiles) {
                         const dataUrl = await new Promise((resolve) => {
                             const reader = new FileReader();
                             reader.onload = (e) => resolve(e.target.result);
                             reader.readAsDataURL(f);
                         });
-
-                        state.imageQueue.push({
-                            id: Math.random().toString(36).substr(2, 9),
-                            file: f,
-                            dataUrl: dataUrl,
-                            name: f.name
-                        });
+                        state.imageQueue.push({ id: Math.random().toString(36).substr(2, 9), file: f, dataUrl: dataUrl, name: f.name });
                     }
-                } else {
-                    // 通常のPDF読み込み
-                    const f = files[0];
-                    if (f.type !== 'application/pdf') throw new Error("PDFファイルを選択してください");
-
-                    const titleEl = document.getElementById('reader-title');
-                    if (titleEl) titleEl.textContent = f.name;
-
-                    const filenameEl = document.getElementById('info-filename');
-                    if (filenameEl) filenameEl.textContent = f.name;
-                    const filesizeEl = document.getElementById('info-filesize');
-                    if (filesizeEl) filesizeEl.textContent = formatBytes(f.size);
-
-                    state.mainBytes = await f.arrayBuffer();
-                    state.mainPdf = await PDFLib.PDFDocument.load(state.mainBytes.slice(0));
-
-                    state.mainFileMeta = { name: f.name, size: f.size, pages: state.mainPdf.getPageCount() };
-
-                    const pagecountEl = document.getElementById('info-pagecount');
-                    if (pagecountEl) pagecountEl.textContent = state.mainPdf.getPageCount() + " ページ";
-
-                    if (state.currentTab === 'view') {
+                } else if (state.currentTab === 'view') {
+                    let pdfFile = Array.from(files).find(f => f.type === 'application/pdf');
+                    if (pdfFile) {
+                        await loadMainPdf(pdfFile);
+                    } else if (hasImage) {
+                        // 閲覧タブに画像が渡された場合、一時的にPDF化してプレビュー
+                        let imageFiles = Array.from(files).filter(f => f.type.startsWith('image/'));
+                        const pdfBytes = await createPdfFromImages(imageFiles);
+                        state.mainBytes = pdfBytes.buffer || pdfBytes; 
+                        state.mainPdf = await PDFLib.PDFDocument.load(state.mainBytes.slice(0));
+                        state.mainFileMeta = { name: "画像プレビュー", size: state.mainBytes.byteLength, pages: state.mainPdf.getPageCount() };
+                        
+                        document.getElementById('reader-title').textContent = "画像プレビュー";
+                        
                         const loadingTask = pdfjsLib.getDocument({ data: state.mainBytes.slice(0) });
                         state.readerPdf = await loadingTask.promise;
-                        await extractBookmarks();
+                        state.bookmarks = []; // 画像なのでしおりはリセット
+                        renderBookmarkEditor();
                         await renderReader();
-                    } else {
-                        await generateThumbnails();
-                        setupControlsForTab();
-                        renderGrids();
                     }
+                } else {
+                    let pdfFile = Array.from(files).find(f => f.type === 'application/pdf');
+                    if (!pdfFile) throw new Error("PDFファイルを選択してください");
+                    await loadMainPdf(pdfFile);
                 }
                 checkState();
             } catch (err) {
@@ -601,7 +644,7 @@
             }
         }
 
-        // ---------- 既存の各機能ロジック (省略せずそのまま維持) ----------
+        // ---------- 既存の各機能ロジック ----------
 
         function setReaderMode(mode) {
             state.readerMode = mode;
@@ -993,8 +1036,7 @@
             const targets = [
                 { id: 'grid-delete', tab: 'delete' },
                 { id: 'grid-sort', tab: 'sort' },
-                { id: 'grid-ocr-pick', tab: 'ocr' },
-                { id: 'grid-conv-pick', tab: 'convert' } // 追加
+                { id: 'grid-conv-pick', tab: 'convert' } 
             ];
 
             targets.forEach(target => {
@@ -1005,10 +1047,7 @@
                 state.pages.forEach((p, idx) => {
                     const div = document.createElement('div');
                     let classes = `pdf-page-card border border-slate-200 rounded-lg p-1.5 cursor-pointer hover:shadow-md bg-white ${p.selected ? 'selected' : ''}`;
-                    if (target.id === 'grid-ocr-pick') {
-                        classes = `pdf-page-card border border-slate-200 rounded-lg p-1.5 cursor-pointer hover:shadow-md bg-white w-full ${p.selected ? 'selected' : ''}`;
-                    } else if (target.id === 'grid-conv-pick') {
-                        // 横スクロール用に少し小さめに
+                    if (target.id === 'grid-conv-pick') {
                         classes = `pdf-page-card border border-slate-200 rounded-lg p-1 cursor-pointer hover:shadow-md bg-white !w-[100px] ${p.selected ? 'selected' : ''}`;
                     }
                     div.className = classes;
@@ -1294,56 +1333,6 @@
             }
         }
 
-        async function executeOCR() {
-            const selected = state.pages.filter(p => p.selected);
-            if (!selected.length) return alert("解析するページを選択してください");
-
-            const confirmed = confirm(
-                "OCR実行時に、Tesseract言語モデル（日本語+英語、約30〜50MB）を\n" +
-                "インターネット上のCDNからダウンロードします。\n\n" +
-                "続行しますか？"
-            );
-            if (!confirmed) return;
-
-            const loader = document.getElementById('ocr-loader');
-            if (loader) loader.classList.remove('hidden');
-            const output = document.getElementById('ocr-out');
-            if (output) output.value = '';
-            try {
-                const worker = await Tesseract.createWorker('jpn+eng');
-                await worker.setParameters({ tessedit_pageseg_mode: Tesseract.PSM.AUTO });
-
-                const loading = pdfjsLib.getDocument({ data: state.mainBytes.slice(0) });
-                const pdf = await loading.promise;
-
-                for (let i = 0; i < selected.length; i++) {
-                    const stat = document.getElementById('ocr-stat');
-                    if (stat) stat.textContent = `解析中 (${i + 1}/${selected.length})...`;
-
-                    const page = await pdf.getPage(selected[i].id);
-                    const viewport = page.getViewport({ scale: 2.0 });
-                    const canvas = document.createElement('canvas');
-                    const context = canvas.getContext('2d');
-                    canvas.width = viewport.width;
-                    canvas.height = viewport.height;
-
-                    context.fillStyle = 'white';
-                    context.fillRect(0, 0, canvas.width, canvas.height);
-                    await page.render({ canvasContext: context, viewport }).promise;
-
-                    const res = await worker.recognize(canvas);
-                    if (output) {
-                        output.value += `--- Page ${selected[i].id} ---\n${res.data.text}\n\n`;
-                        output.scrollTop = output.scrollHeight;
-                    }
-                }
-                await worker.terminate();
-            } catch (err) {
-                alert("OCR失敗: " + err.message);
-            } finally {
-                if (loader) loader.classList.add('hidden');
-            }
-        }
 
         // ---------- 新規追加ロジック: 画像 ⇄ PDF変換 ----------
 
@@ -1364,6 +1353,64 @@
                 indices = state.pages.map((p, i) => i + 1);
             }
 
+            // --- 単一ページの場合はZIP化せず直接ダウンロード ---
+            if (indices.length === 1) {
+                showOverlay("画像へ変換中...");
+                try {
+                    const loading = pdfjsLib.getDocument({ data: state.mainBytes.slice(0) });
+                    const pdf = await loading.promise;
+                    const pageNum = indices[0];
+                    const page = await pdf.getPage(pageNum);
+                    const viewport = page.getViewport({ scale: scale });
+                    const canvas = document.createElement('canvas');
+                    const context = canvas.getContext('2d');
+                    canvas.width = viewport.width;
+                    canvas.height = viewport.height;
+                    
+                    context.fillStyle = 'white';
+                    context.fillRect(0, 0, canvas.width, canvas.height);
+
+                    await page.render({ canvasContext: context, viewport }).promise;
+                    const blob = await new Promise(resolve => canvas.toBlob(resolve, format, 0.9));
+                    
+                    let baseName = state.mainFileMeta ? state.mainFileMeta.name.replace(/\.pdf$/i, '') : 'page';
+                    const fileName = `${baseName}_${pageNum}.${ext}`;
+                    
+                    // File System Access API を優先
+                    if (window.showSaveFilePicker) {
+                        try {
+                            const fileHandle = await window.showSaveFilePicker({
+                                suggestedName: fileName,
+                                types: [{ description: '画像ファイル', accept: { [format]: [`.${ext}`] } }]
+                            });
+                            const writable = await fileHandle.createWritable();
+                            await writable.write(blob);
+                            await writable.close();
+                            hideOverlay();
+                            return;
+                        } catch (err) {
+                            if (err.name === 'AbortError') { hideOverlay(); return; }
+                        }
+                    }
+
+                    // Fallback: aタグダウンロード
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = fileName;
+                    document.body.appendChild(a);
+                    a.click();
+                    setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 150);
+
+                } catch (e) {
+                    alert("画像変換エラー: " + e.message);
+                } finally {
+                    hideOverlay();
+                }
+                return;
+            }
+
+            // --- 複数ページの場合はZIP化してダウンロード ---
             const dest = await resolveSaveZip(`pdf_images.${ext}.zip`);
             if (!dest) return;
 
@@ -1384,16 +1431,12 @@
                     canvas.width = viewport.width;
                     canvas.height = viewport.height;
                     
-                    // 背景を白にする（透過防止）
                     context.fillStyle = 'white';
                     context.fillRect(0, 0, canvas.width, canvas.height);
 
                     await page.render({ canvasContext: context, viewport }).promise;
                     
-                    // Canvasの内容をBlob化
                     const blob = await new Promise(resolve => canvas.toBlob(resolve, format, 0.9));
-                    
-                    // ページ番号のゼロパディング (例: page_01.png)
                     const paddedNum = String(pageNum).padStart(String(pdf.numPages).length, '0');
                     files.push({ name: `page_${paddedNum}.${ext}`, data: blob });
                 }
@@ -1440,12 +1483,10 @@
             });
             lucide.createIcons();
 
-            // 並べ替え（Sortable）の初期化
             if (!list.sortableInstance) {
                 list.sortableInstance = new Sortable(list, { 
                     animation: 150,
                     onEnd: function (evt) {
-                        // ドラッグ後のDOMの順序に合わせて配列を並べ替える
                         const newArray = [];
                         const items = list.querySelectorAll('.img-card');
                         items.forEach(item => {
@@ -1453,7 +1494,7 @@
                             if (found) newArray.push(found);
                         });
                         state.imageQueue = newArray;
-                        renderImageToPdfList(); // 番号を振り直すために再描画
+                        renderImageToPdfList(); 
                     }
                 });
             }
@@ -1486,30 +1527,21 @@
                     showOverlay(`PDF生成中... (${i + 1} / ${state.imageQueue.length})`);
                     const imgItem = state.imageQueue[i];
                     
-                    // ファイルのArrayBufferを取得
                     const imgBytes = await imgItem.file.arrayBuffer();
                     
                     let pdfImage;
-                    // MIMEタイプでPNGかJPEGか判定
                     if (imgItem.file.type === 'image/png') {
                         pdfImage = await pdfDoc.embedPng(imgBytes);
                     } else if (imgItem.file.type === 'image/jpeg' || imgItem.file.type === 'image/jpg') {
                         pdfImage = await pdfDoc.embedJpg(imgBytes);
                     } else {
-                        // それ以外の形式が混ざっていた場合はスキップまたは警告
                         console.warn("未対応の画像フォーマットです:", imgItem.file.name);
                         continue;
                     }
 
-                    // 画像の元寸法を取得し、そのままのサイズでページを作成する
                     const { width, height } = pdfImage.scale(1);
                     const page = pdfDoc.addPage([width, height]);
-                    page.drawImage(pdfImage, {
-                        x: 0,
-                        y: 0,
-                        width: width,
-                        height: height,
-                    });
+                    page.drawImage(pdfImage, { x: 0, y: 0, width: width, height: height });
                 }
 
                 const pdfBytes = await pdfDoc.save();
@@ -1525,12 +1557,15 @@
 
         // ---------- ユーティリティ ----------
 
-        async function getFileHandle(suggestedName, isPdf = true) {
+        async function getFileHandle(suggestedName, isPdf = true, customTypes = null) {
             if (!window.showSaveFilePicker) return null;
             try {
-                const types = isPdf
-                    ? [{ description: 'PDFファイル', accept: { 'application/pdf': ['.pdf'] } }]
-                    : [{ description: 'ZIPファイル', accept: { 'application/zip': ['.zip'] } }];
+                let types = customTypes;
+                if (!types) {
+                    types = isPdf
+                        ? [{ description: 'PDFファイル', accept: { 'application/pdf': ['.pdf'] } }]
+                        : [{ description: 'ZIPファイル', accept: { 'application/zip': ['.zip'] } }];
+                }
                 return await window.showSaveFilePicker({ suggestedName, types });
             } catch (err) {
                 if (err.name === 'AbortError') return 'cancelled';
